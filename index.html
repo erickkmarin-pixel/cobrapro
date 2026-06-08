@@ -489,7 +489,7 @@ select.form-input { appearance: none; -webkit-appearance: none; background-image
   // Service Worker: solo cachea la app (mismo origen). NO toca las llamadas a Supabase.
   if ('serviceWorker' in navigator) {
     const swCode = `
-      const CACHE = 'cobrapro-v3';
+      const CACHE = 'cobrapro-v4';
       self.addEventListener('install', e => self.skipWaiting());
       self.addEventListener('activate', e => self.clients.claim());
       self.addEventListener('fetch', e => {
@@ -597,7 +597,7 @@ async function loadData() {
     console.error(c.error || d.error || p.error);
   }
   db.clientes = (c.data || []).map(r => ({ id:r.id, nombre:r.nombre, tel:r.tel, email:r.email, riesgo:r.riesgo, notas:r.notas }));
-  db.deudas   = (d.data || []).map(r => ({ id:r.id, clienteId:r.cliente_id, concepto:r.concepto, monto:r.monto, pagado:r.pagado, vencimiento:r.vencimiento }));
+  db.deudas   = (d.data || []).map(r => ({ id:r.id, clienteId:r.cliente_id, concepto:r.concepto, monto:r.monto, pagado:r.pagado, vencimiento:r.vencimiento, creado:r.created_at }));
   db.pagos    = (p.data || []).map(r => ({ id:r.id, deudaId:r.deuda_id, monto:r.monto, fecha:r.fecha, metodo:r.metodo, notas:r.notas }));
 }
 
@@ -619,6 +619,15 @@ function fmtDate(s) {
   return d.toLocaleDateString('es', {day:'2-digit', month:'short', year:'numeric'});
 }
 function today() { return new Date().toISOString().split('T')[0]; }
+function fmtReg(s) {
+  if(!s) return '—';
+  return new Date(s).toLocaleDateString('es', {day:'2-digit', month:'short', year:'numeric'});
+}
+function diasVencido(d) {
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  const venc = new Date(d.vencimiento + 'T00:00:00');
+  return Math.floor((hoy - venc) / 86400000);
+}
 function estadoDeuda(d) {
   const hoy = new Date(); hoy.setHours(0,0,0,0);
   const venc = new Date(d.vencimiento + 'T00:00:00');
@@ -705,10 +714,16 @@ function renderDashboard() {
     vencidas.forEach(d => {
       const c = db.clientes.find(x=>x.id===d.clienteId)||{nombre:'?'};
       const [bg,fg] = avColor(c.id||0);
+      const dias = diasVencido(d);
       html += `<div class="card-row" onclick="verDeuda('${d.id}')">
         <div class="avatar avatar-sm" style="background:${bg};color:${fg}">${initials(c.nombre)}</div>
-        <div class="row-main"><div class="row-title">${c.nombre}</div><div class="row-sub">${d.concepto}</div></div>
-        <div class="row-right"><div class="row-amount" style="color:var(--red)">${fmt(parseFloat(d.monto)-parseFloat(d.pagado))}</div><div class="row-date">${fmtDate(d.vencimiento)}</div></div>
+        <div class="row-main">
+          <div class="row-title">${c.nombre}</div>
+          <div class="row-sub">${d.concepto}</div>
+          <div class="row-sub" style="color:var(--red);margin-top:2px">⏰ Vencida hace ${dias} día${dias===1?'':'s'}</div>
+          <div class="row-sub" style="font-size:11px">Registrada: ${fmtReg(d.creado)}</div>
+        </div>
+        <div class="row-right"><div class="row-amount" style="color:var(--red)">${fmt(parseFloat(d.monto)-parseFloat(d.pagado))}</div><div class="row-date">Vence ${fmtDate(d.vencimiento)}</div></div>
       </div>`;
     });
     html += `</div>`;
