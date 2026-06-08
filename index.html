@@ -489,7 +489,7 @@ select.form-input { appearance: none; -webkit-appearance: none; background-image
   // Service Worker: solo cachea la app (mismo origen). NO toca las llamadas a Supabase.
   if ('serviceWorker' in navigator) {
     const swCode = `
-      const CACHE = 'cobrapro-v4';
+      const CACHE = 'cobrapro-v5';
       self.addEventListener('install', e => self.skipWaiting());
       self.addEventListener('activate', e => self.clients.claim());
       self.addEventListener('fetch', e => {
@@ -720,10 +720,11 @@ function renderDashboard() {
         <div class="row-main">
           <div class="row-title">${c.nombre}</div>
           <div class="row-sub">${d.concepto}</div>
-          <div class="row-sub" style="color:var(--red);margin-top:2px">⏰ Vencida hace ${dias} día${dias===1?'':'s'}</div>
-          <div class="row-sub" style="font-size:11px">Registrada: ${fmtReg(d.creado)}</div>
+          <div class="row-sub" style="margin-top:2px">Registrada: ${fmtReg(d.creado)}</div>
+          <div class="row-sub">Vence: ${fmtDate(d.vencimiento)}</div>
+          <div class="row-sub" style="color:var(--red)">⏰ Vencida hace ${dias} día${dias===1?'':'s'}</div>
         </div>
-        <div class="row-right"><div class="row-amount" style="color:var(--red)">${fmt(parseFloat(d.monto)-parseFloat(d.pagado))}</div><div class="row-date">Vence ${fmtDate(d.vencimiento)}</div></div>
+        <div class="row-right"><div class="row-amount" style="color:var(--red)">${fmt(parseFloat(d.monto)-parseFloat(d.pagado))}</div></div>
       </div>`;
     });
     html += `</div>`;
