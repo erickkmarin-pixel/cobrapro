@@ -489,7 +489,7 @@ select.form-input { appearance: none; -webkit-appearance: none; background-image
   // Service Worker: solo cachea la app (mismo origen). NO toca las llamadas a Supabase.
   if ('serviceWorker' in navigator) {
     const swCode = `
-      const CACHE = 'cobrapro-v5';
+      const CACHE = 'cobrapro-v6';
       self.addEventListener('install', e => self.skipWaiting());
       self.addEventListener('activate', e => self.clients.claim());
       self.addEventListener('fetch', e => {
@@ -973,8 +973,8 @@ function verDeuda(id) {
         <div style="width:32px;height:32px;background:var(--green-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0">
           <svg width="14" height="14" fill="none" stroke="var(--green)" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </div>
-        <div class="row-main"><div class="row-title" style="color:var(--green)">+${fmt(p.monto)}</div><div class="row-sub">${p.metodo}${p.notas?' · '+p.notas:''}</div></div>
-        <div class="row-date">${fmtDate(p.fecha)}</div>
+        <div class="row-main"><div class="row-title" style="color:var(--green)">+${fmt(p.monto)}</div><div class="row-sub">${p.metodo}${p.notas?' · '+p.notas:''} · ${fmtDate(p.fecha)}</div></div>
+        <button class="btn-icon" style="padding:7px 11px;color:var(--red-text)" onclick="confirmarEliminar('pago','${p.id}','¿Eliminar este pago de ${fmt(p.monto)}? Se restará del total pagado de la deuda.','${id}')">Borrar</button>
       </div>`;
     });
     html += `</div>`;
@@ -1053,6 +1053,7 @@ function renderPagos() {
         <div class="avatar avatar-sm" style="background:${bg};color:${fg}">${initials(c.nombre)}</div>
         <div class="row-main"><div class="row-title">${c.nombre}</div><div class="row-sub">${d.concepto} · ${p.metodo}</div></div>
         <div class="row-right"><div class="row-amount" style="color:var(--green)">+${fmt(p.monto)}</div><div class="row-date">${fmtDate(p.fecha)}</div></div>
+        <button class="btn-icon" style="padding:7px 11px;color:var(--red-text);margin-left:10px" onclick="confirmarEliminar('pago','${p.id}','¿Eliminar este pago de ${fmt(p.monto)}? Se restará del total pagado de la deuda.','${p.deudaId}')">Borrar</button>
       </div>`;
     });
     html += `</div>`;
@@ -1090,17 +1091,34 @@ async function guardarPago() {
 
 // ─── ELIMINAR ────────────────────────────────────────────────
 let modalAction = null;
-function confirmarEliminar(tipo, id, msg) {
-  document.getElementById('modal-title').textContent = 'Eliminar ' + (tipo==='cliente'?'cliente':'deuda');
+function confirmarEliminar(tipo, id, msg, extra) {
+  const titulos = { cliente:'cliente', deuda:'deuda', pago:'pago' };
+  document.getElementById('modal-title').textContent = 'Eliminar ' + (titulos[tipo] || tipo);
   document.getElementById('modal-msg').textContent = msg;
   modalAction = async () => {
     let res;
-    if(tipo === 'cliente') res = await sb.from('clientes').delete().eq('id', id);
-    else                   res = await sb.from('deudas').delete().eq('id', id);
+    if(tipo === 'cliente') {
+      res = await sb.from('clientes').delete().eq('id', id);
+    } else if(tipo === 'deuda') {
+      res = await sb.from('deudas').delete().eq('id', id);
+    } else if(tipo === 'pago') {
+      res = await sb.from('pagos').delete().eq('id', id);
+      if(!res.error) {
+        // Recalcular el total pagado de la deuda según los pagos que quedan
+        const rest = await sb.from('pagos').select('monto').eq('deuda_id', extra);
+        const suma = (rest.data||[]).reduce((a,p)=>a+parseFloat(p.monto),0);
+        await sb.from('deudas').update({ pagado: suma }).eq('id', extra);
+      }
+    }
     if(res.error) { alert('Error al eliminar: ' + res.error.message); return; }
     await loadData(); closeModal();
     if(tipo === 'cliente') { showToast('Cliente eliminado'); goTo('clientes'); }
-    else                   { showToast('Deuda eliminada'); goTo('deudas'); }
+    else if(tipo === 'deuda') { showToast('Deuda eliminada'); goTo('deudas'); }
+    else { // pago
+      showToast('Pago eliminado');
+      if(document.getElementById('s-deuda-detalle').classList.contains('active')) verDeuda(extra);
+      else goTo('pagos');
+    }
   };
   document.getElementById('modal-confirm-btn').onclick = modalAction;
   document.getElementById('modal-eliminar').classList.add('open');
