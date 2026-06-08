@@ -188,10 +188,12 @@ select.form-input { appearance: none; -webkit-appearance: none; background-image
   <div id="auth-login" style="display:none; flex-direction:column; align-items:center;">
     <div class="auth-logo">💰</div>
     <div class="auth-title">CobraPro</div>
-    <div class="auth-sub">Gestiona tus cobros, clientes y deudas. Escribe tu correo para entrar.</div>
+    <div class="auth-sub">Gestiona tus cobros, clientes y deudas. Entra con tu correo y contraseña.</div>
     <div class="auth-box">
-      <input type="email" class="form-input" id="login-email" placeholder="tu@correo.com" style="margin-bottom:10px">
-      <button class="btn-primary" onclick="loginEmail()">Enviarme un enlace de acceso</button>
+      <input type="email" class="form-input" id="login-email" placeholder="tu@correo.com" autocomplete="email" style="margin-bottom:10px">
+      <input type="password" class="form-input" id="login-pass" placeholder="Contraseña (mín. 6 caracteres)" autocomplete="current-password" style="margin-bottom:12px">
+      <button class="btn-primary" onclick="loginPassword()" style="margin-bottom:10px">Entrar</button>
+      <button class="btn-secondary" onclick="signupPassword()">Crear cuenta nueva</button>
       <div class="auth-msg" id="auth-msg"></div>
     </div>
   </div>
@@ -487,7 +489,7 @@ select.form-input { appearance: none; -webkit-appearance: none; background-image
   // Service Worker: solo cachea la app (mismo origen). NO toca las llamadas a Supabase.
   if ('serviceWorker' in navigator) {
     const swCode = `
-      const CACHE = 'cobrapro-v2';
+      const CACHE = 'cobrapro-v3';
       self.addEventListener('install', e => self.skipWaiting());
       self.addEventListener('activate', e => self.clients.claim());
       self.addEventListener('fetch', e => {
@@ -523,15 +525,34 @@ let db = { clientes:[], deudas:[], pagos:[] };
 // ─── AUTENTICACIÓN ───────────────────────────────────────────
 function authMsg(m) { document.getElementById('auth-msg').textContent = m || ''; }
 
-async function loginEmail() {
+function traducirError(m) {
+  if (/invalid login credentials/i.test(m)) return 'Correo o contraseña incorrectos.';
+  if (/already registered|already exists/i.test(m)) return 'Ese correo ya tiene cuenta. Usa "Entrar".';
+  if (/rate limit/i.test(m)) return 'Demasiados intentos, espera un momento.';
+  if (/password/i.test(m)) return 'La contraseña debe tener al menos 6 caracteres.';
+  if (/email/i.test(m) && /valid/i.test(m)) return 'El correo no es válido.';
+  return m;
+}
+
+async function loginPassword() {
   const email = (document.getElementById('login-email').value || '').trim();
-  if (!email) { authMsg('Escribe tu correo primero.'); return; }
-  authMsg('Enviando enlace...');
-  const { error } = await sb.auth.signInWithOtp({
-    email,
-    options: { emailRedirectTo: window.location.origin + window.location.pathname }
-  });
-  authMsg(error ? ('Error: ' + error.message) : '✓ Revisa tu correo y abre el enlace para entrar.');
+  const password = document.getElementById('login-pass').value;
+  if (!email || !password) { authMsg('Escribe tu correo y contraseña.'); return; }
+  authMsg('Entrando...');
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+  if (error) authMsg(traducirError(error.message));
+}
+
+async function signupPassword() {
+  const email = (document.getElementById('login-email').value || '').trim();
+  const password = document.getElementById('login-pass').value;
+  if (!email || !password) { authMsg('Escribe tu correo y una contraseña.'); return; }
+  if (password.length < 6) { authMsg('La contraseña debe tener al menos 6 caracteres.'); return; }
+  authMsg('Creando cuenta...');
+  const { data, error } = await sb.auth.signUp({ email, password });
+  if (error) { authMsg(traducirError(error.message)); return; }
+  if (!data.session) authMsg('Cuenta creada. Ahora pulsa "Entrar".');
+  // Si hay sesión, onAuthStateChange arranca la app automáticamente.
 }
 
 async function logout() {
