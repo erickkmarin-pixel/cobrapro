@@ -420,6 +420,7 @@ select.form-input { appearance: none; -webkit-appearance: none; background-image
       <div class="form-group"><label class="form-label">Cliente *</label><select class="form-input" id="fd-cliente"></select></div>
       <div class="form-group"><label class="form-label">Concepto *</label><input class="form-input" id="fd-concepto" placeholder="Ej. Préstamo personal" type="text"></div>
       <div class="form-group"><label class="form-label">Monto total ($) *</label><input class="form-input" id="fd-monto" placeholder="0.00" type="number" inputmode="decimal"></div>
+      <div class="form-group"><label class="form-label">Fecha de registro</label><input class="form-input" id="fd-registro" type="date"></div>
       <div class="form-group"><label class="form-label">Fecha de vencimiento *</label><input class="form-input" id="fd-fecha" type="date"></div>
       <div style="margin-top:8px"><button class="btn-primary" onclick="guardarDeuda()">Guardar deuda</button></div>
     </div>
@@ -489,7 +490,7 @@ select.form-input { appearance: none; -webkit-appearance: none; background-image
   // Service Worker: solo cachea la app (mismo origen). NO toca las llamadas a Supabase.
   if ('serviceWorker' in navigator) {
     const swCode = `
-      const CACHE = 'cobrapro-v7';
+      const CACHE = 'cobrapro-v8';
       self.addEventListener('install', e => self.skipWaiting());
       self.addEventListener('activate', e => self.clients.claim());
       self.addEventListener('fetch', e => {
@@ -999,12 +1000,14 @@ function openFormDeuda(id, preClienteId) {
     sel.value = d.clienteId;
     document.getElementById('fd-concepto').value = d.concepto;
     document.getElementById('fd-monto').value = d.monto;
+    document.getElementById('fd-registro').value = d.creado ? new Date(d.creado).toISOString().split('T')[0] : today();
     document.getElementById('fd-fecha').value = d.vencimiento;
   } else {
     document.getElementById('form-deuda-title').textContent = 'Nueva deuda';
     document.getElementById('fd-id').value = '';
     document.getElementById('fd-concepto').value = '';
     document.getElementById('fd-monto').value = '';
+    document.getElementById('fd-registro').value = today();
     document.getElementById('fd-fecha').value = '';
     if(preClienteId) sel.value = preClienteId;
   }
@@ -1016,10 +1019,12 @@ async function guardarDeuda() {
   const fecha = document.getElementById('fd-fecha').value;
   const clienteId = document.getElementById('fd-cliente').value;
   if(!concepto || !monto || !fecha || !clienteId) { alert('Completa todos los campos obligatorios'); return; }
+  const fechaReg = document.getElementById('fd-registro').value || today();
+  const createdAt = fechaReg + 'T12:00:00';
   const id = document.getElementById('fd-id').value;
   let res;
-  if(id) res = await sb.from('deudas').update({ concepto, monto, vencimiento: fecha, cliente_id: clienteId }).eq('id', id);
-  else   res = await sb.from('deudas').insert({ cliente_id: clienteId, concepto, monto, pagado: 0, vencimiento: fecha });
+  if(id) res = await sb.from('deudas').update({ concepto, monto, vencimiento: fecha, cliente_id: clienteId, created_at: createdAt }).eq('id', id);
+  else   res = await sb.from('deudas').insert({ cliente_id: clienteId, concepto, monto, pagado: 0, vencimiento: fecha, created_at: createdAt });
   if(res.error) { alert('Error al guardar: ' + res.error.message); return; }
   await loadData(); showToast('Deuda guardada ✓'); goTo('deudas');
 }
