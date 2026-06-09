@@ -489,7 +489,7 @@ select.form-input { appearance: none; -webkit-appearance: none; background-image
   // Service Worker: solo cachea la app (mismo origen). NO toca las llamadas a Supabase.
   if ('serviceWorker' in navigator) {
     const swCode = `
-      const CACHE = 'cobrapro-v6';
+      const CACHE = 'cobrapro-v7';
       self.addEventListener('install', e => self.skipWaiting());
       self.addEventListener('activate', e => self.clients.claim());
       self.addEventListener('fetch', e => {
@@ -546,7 +546,7 @@ async function loginPassword() {
 async function signupPassword() {
   const email = (document.getElementById('login-email').value || '').trim();
   const password = document.getElementById('login-pass').value;
-  if (!email || !password) { authMsg('Escribe tu correo y una contraseña.'); return; }
+  if (!email || !password) { authMsg('Complete los espacios de correo y contraseña'); return; }
   if (password.length < 6) { authMsg('La contraseña debe tener al menos 6 caracteres.'); return; }
   authMsg('Creando cuenta...');
   const { data, error } = await sb.auth.signUp({ email, password });
