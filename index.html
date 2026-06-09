@@ -35,7 +35,7 @@
   --safe-top: env(safe-area-inset-top, 0px);
 }
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif; font-size: 15px; }
+html, body { height: 100%; overflow: hidden; background: #ff2d55; color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif; font-size: 15px; }
 
 /* LAYOUT */
 .app { display: flex; flex-direction: column; height: 100%; height: -webkit-fill-available; height: 100dvh; }
@@ -415,7 +415,7 @@ select.form-input { appearance: none; -webkit-appearance: none; background-image
 <div class="toast" id="toast"></div>
 
 <!-- MARCADOR DE VERSION (temporal, para diagnostico) -->
-<div style="position:fixed;top:calc(var(--safe-top) + 16px);left:5px;font-size:9px;color:#555;z-index:9999;pointer-events:none">v18</div>
+<div style="position:fixed;top:calc(var(--safe-top) + 16px);left:5px;font-size:9px;color:#555;z-index:9999;pointer-events:none">v19</div>
 
 <!-- ═══════════════════════════════ LIBRERÍA SUPABASE ═══════════════════════════════ -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -441,7 +441,7 @@ select.form-input { appearance: none; -webkit-appearance: none; background-image
   // Service Worker: solo cachea la app (mismo origen). NO toca las llamadas a Supabase.
   if ('serviceWorker' in navigator) {
     const swCode = `
-      const CACHE = 'cobrapro-v18';
+      const CACHE = 'cobrapro-v19';
       self.addEventListener('install', e => self.skipWaiting());
       self.addEventListener('activate', e => self.clients.claim());
       self.addEventListener('fetch', e => {
