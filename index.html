@@ -466,6 +466,9 @@ select.form-input { appearance: none; -webkit-appearance: none; background-image
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
+<!-- MARCADOR DE VERSION (temporal, para diagnostico) -->
+<div style="position:fixed;bottom:0;right:5px;font-size:9px;color:#3a3a3a;z-index:5;pointer-events:none">v13</div>
+
 <!-- ═══════════════════════════════ LIBRERÍA SUPABASE ═══════════════════════════════ -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
@@ -490,7 +493,7 @@ select.form-input { appearance: none; -webkit-appearance: none; background-image
   // Service Worker: solo cachea la app (mismo origen). NO toca las llamadas a Supabase.
   if ('serviceWorker' in navigator) {
     const swCode = `
-      const CACHE = 'cobrapro-v12';
+      const CACHE = 'cobrapro-v13';
       self.addEventListener('install', e => self.skipWaiting());
       self.addEventListener('activate', e => self.clients.claim());
       self.addEventListener('fetch', e => {
