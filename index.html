@@ -38,7 +38,7 @@
 html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif; font-size: 15px; }
 
 /* LAYOUT */
-.app { display: flex; flex-direction: column; height: 100%; height: -webkit-fill-available; }
+.app { display: flex; flex-direction: column; height: 100%; height: -webkit-fill-available; height: 100dvh; }
 .screen { display: none; flex-direction: column; flex: 1; overflow: hidden; }
 .screen.active { display: flex; }
 .scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: calc(80px + var(--safe-bottom)); }
@@ -490,7 +490,7 @@ select.form-input { appearance: none; -webkit-appearance: none; background-image
   // Service Worker: solo cachea la app (mismo origen). NO toca las llamadas a Supabase.
   if ('serviceWorker' in navigator) {
     const swCode = `
-      const CACHE = 'cobrapro-v9';
+      const CACHE = 'cobrapro-v10';
       self.addEventListener('install', e => self.skipWaiting());
       self.addEventListener('activate', e => self.clients.claim());
       self.addEventListener('fetch', e => {
