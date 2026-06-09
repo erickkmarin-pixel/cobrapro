@@ -211,24 +211,6 @@ select.form-input { appearance: none; -webkit-appearance: none; background-image
       </div>
     </div>
     <div class="scroll pad" id="dash-content"></div>
-    <div class="bottom-nav" id="nav-dashboard">
-      <button class="nav-item active" onclick="goTo('dashboard')">
-        <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-        Panel
-      </button>
-      <button class="nav-item" onclick="goTo('clientes')">
-        <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="9" cy="7" r="4"/><path d="M2 21v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2"/><path d="M19 7v6M22 10h-6"/></svg>
-        Clientes
-      </button>
-      <button class="nav-item" onclick="goTo('deudas')">
-        <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M8 14h2m0 0v3m0-3h3"/></svg>
-        Deudas
-      </button>
-      <button class="nav-item" onclick="goTo('pagos')">
-        <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4"/></svg>
-        Pagos
-      </button>
-    </div>
   </div>
 
   <!-- ═══════════════════════════════ CLIENTES ═══════════════════════════════ -->
@@ -253,24 +235,6 @@ select.form-input { appearance: none; -webkit-appearance: none; background-image
     <button class="fab" onclick="openFormCliente(null)">
       <svg fill="none" stroke="#000" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
     </button>
-    <div class="bottom-nav">
-      <button class="nav-item" onclick="goTo('dashboard')">
-        <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-        Panel
-      </button>
-      <button class="nav-item active" onclick="goTo('clientes')">
-        <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="9" cy="7" r="4"/><path d="M2 21v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2"/><path d="M19 7v6M22 10h-6"/></svg>
-        Clientes
-      </button>
-      <button class="nav-item" onclick="goTo('deudas')">
-        <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M8 14h2m0 0v3m0-3h3"/></svg>
-        Deudas
-      </button>
-      <button class="nav-item" onclick="goTo('pagos')">
-        <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4"/></svg>
-        Pagos
-      </button>
-    </div>
   </div>
 
   <!-- DETALLE CLIENTE -->
@@ -308,24 +272,6 @@ select.form-input { appearance: none; -webkit-appearance: none; background-image
     <button class="fab" onclick="openFormDeuda(null)">
       <svg fill="none" stroke="#000" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
     </button>
-    <div class="bottom-nav">
-      <button class="nav-item" onclick="goTo('dashboard')">
-        <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-        Panel
-      </button>
-      <button class="nav-item" onclick="goTo('clientes')">
-        <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="9" cy="7" r="4"/><path d="M2 21v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2"/><path d="M19 7v6M22 10h-6"/></svg>
-        Clientes
-      </button>
-      <button class="nav-item active" onclick="goTo('deudas')">
-        <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M8 14h2m0 0v3m0-3h3"/></svg>
-        Deudas
-      </button>
-      <button class="nav-item" onclick="goTo('pagos')">
-        <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4"/></svg>
-        Pagos
-      </button>
-    </div>
   </div>
 
   <!-- DETALLE DEUDA -->
@@ -357,24 +303,6 @@ select.form-input { appearance: none; -webkit-appearance: none; background-image
     <button class="fab" onclick="openFormPago(null)">
       <svg fill="none" stroke="#000" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
     </button>
-    <div class="bottom-nav">
-      <button class="nav-item" onclick="goTo('dashboard')">
-        <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-        Panel
-      </button>
-      <button class="nav-item" onclick="goTo('clientes')">
-        <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="9" cy="7" r="4"/><path d="M2 21v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2"/><path d="M19 7v6M22 10h-6"/></svg>
-        Clientes
-      </button>
-      <button class="nav-item" onclick="goTo('deudas')">
-        <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M8 14h2m0 0v3m0-3h3"/></svg>
-        Deudas
-      </button>
-      <button class="nav-item active" onclick="goTo('pagos')">
-        <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4"/></svg>
-        Pagos
-      </button>
-    </div>
   </div>
 
   <!-- ═══════════════════════════════ FORM CLIENTE ═══════════════════════════════ -->
@@ -452,6 +380,26 @@ select.form-input { appearance: none; -webkit-appearance: none; background-image
 
 </div>
 
+<!-- BARRA DE NAVEGACION (compartida, anclada al borde inferior real) -->
+<div class="bottom-nav" id="main-nav" style="display:none">
+  <button class="nav-item" data-screen="dashboard" onclick="goTo('dashboard')">
+    <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    Panel
+  </button>
+  <button class="nav-item" data-screen="clientes" onclick="goTo('clientes')">
+    <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="9" cy="7" r="4"/><path d="M2 21v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2"/><path d="M19 7v6M22 10h-6"/></svg>
+    Clientes
+  </button>
+  <button class="nav-item" data-screen="deudas" onclick="goTo('deudas')">
+    <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M8 14h2m0 0v3m0-3h3"/></svg>
+    Deudas
+  </button>
+  <button class="nav-item" data-screen="pagos" onclick="goTo('pagos')">
+    <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4"/></svg>
+    Pagos
+  </button>
+</div>
+
 <!-- MODAL CONFIRMAR ELIMINAR -->
 <div class="modal-overlay" id="modal-eliminar">
   <div class="modal-sheet">
@@ -467,7 +415,7 @@ select.form-input { appearance: none; -webkit-appearance: none; background-image
 <div class="toast" id="toast"></div>
 
 <!-- MARCADOR DE VERSION (temporal, para diagnostico) -->
-<div style="position:fixed;bottom:0;right:5px;font-size:9px;color:#3a3a3a;z-index:5;pointer-events:none">v17</div>
+<div style="position:fixed;top:calc(var(--safe-top) + 16px);left:5px;font-size:9px;color:#555;z-index:9999;pointer-events:none">v18</div>
 
 <!-- ═══════════════════════════════ LIBRERÍA SUPABASE ═══════════════════════════════ -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -493,7 +441,7 @@ select.form-input { appearance: none; -webkit-appearance: none; background-image
   // Service Worker: solo cachea la app (mismo origen). NO toca las llamadas a Supabase.
   if ('serviceWorker' in navigator) {
     const swCode = `
-      const CACHE = 'cobrapro-v17';
+      const CACHE = 'cobrapro-v18';
       self.addEventListener('install', e => self.skipWaiting());
       self.addEventListener('activate', e => self.clients.claim());
       self.addEventListener('fetch', e => {
@@ -666,6 +614,10 @@ function goTo(screen) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('s-' + screen).classList.add('active');
   currentScreen = screen;
+  // Mostrar la barra y resaltar la sección actual
+  const nav = document.getElementById('main-nav');
+  nav.style.display = 'flex';
+  nav.querySelectorAll('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.screen === screen));
   if(screen === 'dashboard') renderDashboard();
   if(screen === 'clientes') renderClientes();
   if(screen === 'deudas') renderDeudas();
@@ -675,6 +627,8 @@ function goTo(screen) {
 function goToScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
+  // Las pantallas de detalle/formulario no muestran la barra inferior
+  document.getElementById('main-nav').style.display = 'none';
 }
 
 // ─── FILTROS ─────────────────────────────────────────────────
