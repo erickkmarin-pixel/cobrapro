@@ -38,7 +38,7 @@
 html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif; font-size: 15px; }
 
 /* LAYOUT */
-.app { display: flex; flex-direction: column; position: fixed; top: 0; right: 0; bottom: 0; left: 0; }
+.app { display: flex; flex-direction: column; height: 100%; height: -webkit-fill-available; height: 100dvh; }
 .screen { display: none; flex-direction: column; flex: 1; overflow: hidden; }
 .screen.active { display: flex; }
 .scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: calc(80px + var(--safe-bottom)); }
@@ -467,7 +467,7 @@ select.form-input { appearance: none; -webkit-appearance: none; background-image
 <div class="toast" id="toast"></div>
 
 <!-- MARCADOR DE VERSION (temporal, para diagnostico) -->
-<div style="position:fixed;bottom:0;right:5px;font-size:9px;color:#3a3a3a;z-index:5;pointer-events:none">v16</div>
+<div style="position:fixed;bottom:0;right:5px;font-size:9px;color:#3a3a3a;z-index:5;pointer-events:none">v17</div>
 
 <!-- ═══════════════════════════════ LIBRERÍA SUPABASE ═══════════════════════════════ -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -493,7 +493,7 @@ select.form-input { appearance: none; -webkit-appearance: none; background-image
   // Service Worker: solo cachea la app (mismo origen). NO toca las llamadas a Supabase.
   if ('serviceWorker' in navigator) {
     const swCode = `
-      const CACHE = 'cobrapro-v16';
+      const CACHE = 'cobrapro-v17';
       self.addEventListener('install', e => self.skipWaiting());
       self.addEventListener('activate', e => self.clients.claim());
       self.addEventListener('fetch', e => {
