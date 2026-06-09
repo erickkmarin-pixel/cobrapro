@@ -194,7 +194,20 @@ select.form-input { appearance: none; -webkit-appearance: none; background-image
       <input type="password" class="form-input" id="login-pass" placeholder="Contraseña (mín. 6 caracteres)" autocomplete="current-password" style="margin-bottom:12px">
       <button class="btn-primary" onclick="loginPassword()" style="margin-bottom:10px">Entrar</button>
       <button class="btn-secondary" onclick="signupPassword()">Crear cuenta nueva</button>
+      <button onclick="recuperarClave()" style="background:none;border:none;color:var(--text2);font-size:13px;margin-top:16px;cursor:pointer;font-family:inherit;text-decoration:underline">¿Olvidaste tu contraseña?</button>
       <div class="auth-msg" id="auth-msg"></div>
+    </div>
+  </div>
+
+  <!-- Recuperar contraseña (nueva clave tras abrir el enlace del correo) -->
+  <div id="auth-recovery" style="display:none; flex-direction:column; align-items:center;">
+    <div class="auth-logo">🔑</div>
+    <div class="auth-title">Nueva contraseña</div>
+    <div class="auth-sub">Escribe tu nueva contraseña para entrar.</div>
+    <div class="auth-box">
+      <input type="password" class="form-input" id="recovery-pass" placeholder="Nueva contraseña (mín. 6 caracteres)" autocomplete="new-password" style="margin-bottom:10px">
+      <button class="btn-primary" onclick="guardarNuevaClave()">Guardar y entrar</button>
+      <div class="auth-msg" id="recovery-msg"></div>
     </div>
   </div>
 </div>
@@ -438,7 +451,7 @@ select.form-input { appearance: none; -webkit-appearance: none; background-image
   // Service Worker: solo cachea la app (mismo origen). NO toca las llamadas a Supabase.
   if ('serviceWorker' in navigator) {
     const swCode = `
-      const CACHE = 'cobrapro-v22';
+      const CACHE = 'cobrapro-v23';
       self.addEventListener('install', e => self.skipWaiting());
       self.addEventListener('activate', e => self.clients.claim());
       self.addEventListener('fetch', e => {
@@ -504,6 +517,24 @@ async function signupPassword() {
   // Si hay sesión, onAuthStateChange arranca la app automáticamente.
 }
 
+async function recuperarClave() {
+  const email = (document.getElementById('login-email').value || '').trim();
+  if (!email) { authMsg('Primero escribe tu correo arriba y vuelve a tocar aquí.'); return; }
+  authMsg('Enviando correo de recuperación...');
+  const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + window.location.pathname });
+  authMsg(error ? traducirError(error.message) : '✓ Te enviamos un correo con un enlace. Ábrelo desde este mismo teléfono para crear tu nueva contraseña.');
+}
+
+async function guardarNuevaClave() {
+  const pass = document.getElementById('recovery-pass').value;
+  const msg = document.getElementById('recovery-msg');
+  if (!pass || pass.length < 6) { msg.textContent = 'La contraseña debe tener al menos 6 caracteres.'; return; }
+  msg.textContent = 'Guardando...';
+  const { error } = await sb.auth.updateUser({ password: pass });
+  if (error) { msg.textContent = traducirError(error.message); return; }
+  recoveryMode = false; appStarted = true; startApp();
+}
+
 async function logout() {
   await sb.auth.signOut();
   location.reload();
@@ -511,7 +542,15 @@ async function logout() {
 
 function showLogin() {
   document.getElementById('auth-loading').style.display = 'none';
+  document.getElementById('auth-recovery').style.display = 'none';
   document.getElementById('auth-login').style.display = 'flex';
+  document.getElementById('auth-screen').classList.remove('hidden');
+}
+
+function showRecovery() {
+  document.getElementById('auth-loading').style.display = 'none';
+  document.getElementById('auth-login').style.display = 'none';
+  document.getElementById('auth-recovery').style.display = 'flex';
   document.getElementById('auth-screen').classList.remove('hidden');
 }
 
@@ -523,14 +562,18 @@ async function startApp() {
 
 // Reacciona a cambios de sesión (incluye el regreso desde Google / enlace de correo)
 let appStarted = false;
+let recoveryMode = false;
 sb.auth.onAuthStateChange((event, session) => {
+  if (event === 'PASSWORD_RECOVERY') { recoveryMode = true; showRecovery(); return; }
+  if (recoveryMode) return; // esperando que el usuario escriba su nueva contraseña
   if (session && !appStarted) { appStarted = true; startApp(); }
   else if (!session && appStarted) { appStarted = false; location.reload(); }
 });
 
 // Comprobación inicial de sesión
 sb.auth.getSession().then(({ data }) => {
-  if (data.session) { if (!appStarted) { appStarted = true; startApp(); } }
+  if (window.location.hash.includes('type=recovery')) return; // lo maneja el evento PASSWORD_RECOVERY
+  if (data.session) { if (!appStarted && !recoveryMode) { appStarted = true; startApp(); } }
   else { showLogin(); }
 });
 
