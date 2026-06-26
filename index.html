@@ -275,10 +275,10 @@ select.form-input { appearance: none; -webkit-appearance: none; background-image
     </div>
     <div class="scroll pad">
       <div class="segment" id="seg-deudas">
-        <button class="seg-btn active" onclick="setFiltroEstado('',this)">Todas</button>
         <button class="seg-btn" onclick="setFiltroEstado('vencido',this)">Vencidas</button>
-        <button class="seg-btn" onclick="setFiltroEstado('parcial',this)">Parcial</button>
         <button class="seg-btn" onclick="setFiltroEstado('pendiente',this)">Pendiente</button>
+        <button class="seg-btn" onclick="setFiltroEstado('parcial',this)">Parcial</button>
+        <button class="seg-btn active" onclick="setFiltroEstado('',this)">Todas</button>
       </div>
       <div id="lista-deudas"></div>
     </div>
@@ -453,7 +453,7 @@ select.form-input { appearance: none; -webkit-appearance: none; background-image
   // Service Worker: solo cachea la app (mismo origen). NO toca las llamadas a Supabase.
   if ('serviceWorker' in navigator) {
     const swCode = `
-      const CACHE = 'cobrapro-v27';
+      const CACHE = 'cobrapro-v28';
       self.addEventListener('install', e => self.skipWaiting());
       self.addEventListener('activate', e => self.clients.claim());
       self.addEventListener('fetch', e => {
@@ -965,7 +965,13 @@ async function guardarCliente() {
 function renderDeudas() {
   db.deudas.forEach(d=>d.estado=estadoDeuda(d));
   let lista = db.deudas.filter(d => !filtroEstado || d.estado === filtroEstado);
-  lista = lista.slice().reverse();
+  if(filtroEstado) {
+    // En Vencidas / Pendiente / Parcial: ordenar por proximidad a vencer (más próximo/vencido primero)
+    lista = lista.slice().sort((a,b) => a.vencimiento < b.vencimiento ? -1 : a.vencimiento > b.vencimiento ? 1 : 0);
+  } else {
+    // En Todas: orden anterior (más recientes primero)
+    lista = lista.slice().reverse();
+  }
   const el = document.getElementById('lista-deudas');
   if(!lista.length) { el.innerHTML = `<div class="empty-state"><div class="icon">📋</div><p>Sin deudas registradas</p></div>`; return; }
   let html = `<div class="card">`;
@@ -1129,7 +1135,6 @@ function renderPagos() {
         <div class="row-right">
           <div class="row-amount" style="color:var(--green)">+${fmt(p.monto)}</div>
           <div class="row-date">${p.metodo}</div>
-          <div class="row-date">${fmtDate(p.fecha)}</div>
         </div>
         <span class="chevron">›</span>
       </div>`;
