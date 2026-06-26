@@ -451,7 +451,7 @@ select.form-input { appearance: none; -webkit-appearance: none; background-image
   // Service Worker: solo cachea la app (mismo origen). NO toca las llamadas a Supabase.
   if ('serviceWorker' in navigator) {
     const swCode = `
-      const CACHE = 'cobrapro-v24';
+      const CACHE = 'cobrapro-v25';
       self.addEventListener('install', e => self.skipWaiting());
       self.addEventListener('activate', e => self.clients.claim());
       self.addEventListener('fetch', e => {
@@ -623,6 +623,27 @@ function diasVencido(d) {
   const hoy = new Date(); hoy.setHours(0,0,0,0);
   const venc = new Date(d.vencimiento + 'T00:00:00');
   return Math.floor((hoy - venc) / 86400000);
+}
+// Fecha de registro de la deuda en formato YYYY-MM-DD (para cálculos)
+function regDateStr(d) {
+  return d.creado ? new Date(d.creado).toISOString().split('T')[0] : null;
+}
+// Diferencia en días entre dos fechas YYYY-MM-DD (positivo si A es posterior a B)
+function diffDiasFechas(fechaA, fechaB) {
+  if(!fechaA || !fechaB) return 0;
+  const a = new Date(fechaA + 'T00:00:00');
+  const b = new Date(fechaB + 'T00:00:00');
+  return Math.round((a - b) / 86400000);
+}
+// Fecha en que la deuda quedó saldada por completo (cuando los pagos acumulados alcanzan el monto)
+function fechaPagoCompleto(d) {
+  const pagos = db.pagos.filter(p => p.deudaId === d.id).slice().sort((a,b)=> (a.fecha < b.fecha ? -1 : 1));
+  let acum = 0;
+  for(const p of pagos) {
+    acum += parseFloat(p.monto);
+    if(acum >= parseFloat(d.monto)) return p.fecha;
+  }
+  return pagos.length ? pagos[pagos.length-1].fecha : null;
 }
 function estadoDeuda(d) {
   const hoy = new Date(); hoy.setHours(0,0,0,0);
@@ -914,19 +935,45 @@ function renderDeudas() {
     const [bg,fg] = avColor(c.id);
     const pct = Math.min(100, Math.round((parseFloat(d.pagado)/parseFloat(d.monto))*100));
     const saldo = parseFloat(d.monto)-parseFloat(d.pagado);
-    let lineaDias = '';
-    if(d.estado !== 'pagado') {
+    let info = '';
+    const regFmt = fmtReg(d.creado);
+    if(d.estado === 'pagado') {
+      const regStr = regDateStr(d);
+      const fPago = fechaPagoCompleto(d);
+      info += `<div class="row-sub" style="font-size:11px">📌 Registrada: ${regFmt}</div>`;
+      if(regStr && d.vencimiento) {
+        const plazo = diffDiasFechas(d.vencimiento, regStr);
+        info += `<div class="row-sub" style="font-size:11px">⏳ Plazo: ${plazo} día${plazo===1?'':'s'} (vencía ${fmtDate(d.vencimiento)})</div>`;
+      }
+      if(fPago) {
+        info += `<div class="row-sub" style="font-size:11px;color:var(--green)">✅ Pagada el ${fmtDate(fPago)}</div>`;
+        if(d.vencimiento) {
+          const dif = diffDiasFechas(fPago, d.vencimiento); // + = pagó tarde, - = pagó antes
+          let txt, col;
+          if(dif < 0)        { txt = `Pagó ${-dif} día${dif===-1?'':'s'} adelantado`; col = 'var(--green)'; }
+          else if(dif === 0) { txt = `Pagó justo el día del vencimiento`; col = 'var(--green)'; }
+          else               { txt = `Pagó ${dif} día${dif===1?'':'s'} retrasado`; col = 'var(--red)'; }
+          info += `<div class="row-sub" style="font-size:11px;color:${col}">⏱️ ${txt}</div>`;
+        }
+      }
+    } else {
       const dias = diasVencido(d); // positivo = ya venció, negativo = aún falta
-      if(dias > 0)       lineaDias = `<div class="row-sub" style="color:var(--red)">⏰ Vencida hace ${dias} día${dias===1?'':'s'}</div>`;
-      else if(dias === 0) lineaDias = `<div class="row-sub" style="color:var(--amber)">⚠️ Vence hoy</div>`;
-      else               lineaDias = `<div class="row-sub" style="color:var(--green)">📅 Faltan ${-dias} día${dias===-1?'':'s'} para vencer</div>`;
+      if(dias > 0)        info += `<div class="row-sub" style="color:var(--red)">⏰ Vencida hace ${dias} día${dias===1?'':'s'}</div>`;
+      else if(dias === 0) info += `<div class="row-sub" style="color:var(--amber)">⚠️ Vence hoy</div>`;
+      else                info += `<div class="row-sub" style="color:var(--green)">📅 Faltan ${-dias} día${dias===-1?'':'s'} para vencer</div>`;
+      info += `<div class="row-sub" style="font-size:11px">📌 Registrada: ${regFmt}</div>`;
+      const regStr = regDateStr(d);
+      if(regStr && d.vencimiento) {
+        const plazo = diffDiasFechas(d.vencimiento, regStr);
+        info += `<div class="row-sub" style="font-size:11px">⏳ Plazo: ${plazo} día${plazo===1?'':'s'} (vence ${fmtDate(d.vencimiento)})</div>`;
+      }
     }
     html += `<div class="card-row" onclick="verDeuda('${d.id}')">
       <div class="avatar avatar-sm" style="background:${bg};color:${fg}">${initials(c.nombre)}</div>
       <div class="row-main">
         <div class="row-title">${d.concepto}</div>
         <div class="row-sub">${c.nombre}</div>
-        ${lineaDias}
+        ${info}
         <div style="margin-top:5px;display:flex;align-items:center;gap:6px">
           <div class="progress-bar" style="width:80px"><div class="progress-fill" style="width:${pct}%"></div></div>
           <span style="font-size:10px;color:var(--text2)">${pct}%</span>
