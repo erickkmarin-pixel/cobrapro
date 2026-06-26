@@ -374,10 +374,11 @@ select.form-input { appearance: none; -webkit-appearance: none; background-image
         <svg width="10" height="17" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 10 17"><path d="M9 1 1 8.5 9 16"/></svg>
         Cancelar
       </button>
-      <h1>Registrar pago</h1>
+      <h1 id="form-pago-title">Registrar pago</h1>
       <div style="width:60px"></div>
     </div>
     <div class="scroll pad">
+      <input type="hidden" id="fp-id">
       <div class="form-group"><label class="form-label">Deuda *</label><select class="form-input" id="fp-deuda"></select></div>
       <div class="form-group"><label class="form-label">Monto ($) *</label><input class="form-input" id="fp-monto" placeholder="0.00" type="number" inputmode="decimal"></div>
       <div class="form-group"><label class="form-label">Método</label>
@@ -451,7 +452,7 @@ select.form-input { appearance: none; -webkit-appearance: none; background-image
   // Service Worker: solo cachea la app (mismo origen). NO toca las llamadas a Supabase.
   if ('serviceWorker' in navigator) {
     const swCode = `
-      const CACHE = 'cobrapro-v25';
+      const CACHE = 'cobrapro-v26';
       self.addEventListener('install', e => self.skipWaiting());
       self.addEventListener('activate', e => self.clients.claim());
       self.addEventListener('fetch', e => {
@@ -1026,12 +1027,12 @@ function verDeuda(id) {
   if(pagosD.length) {
     html += `<div class="card-section-title">Historial de pagos</div><div class="card">`;
     pagosD.forEach(p => {
-      html += `<div class="card-row" style="cursor:default">
+      html += `<div class="card-row" onclick="openFormPago(null,'${p.id}')">
         <div style="width:32px;height:32px;background:var(--green-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0">
           <svg width="14" height="14" fill="none" stroke="var(--green)" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </div>
         <div class="row-main"><div class="row-title" style="color:var(--green)">+${fmt(p.monto)}</div><div class="row-sub">${p.metodo}${p.notas?' · '+p.notas:''} · ${fmtDate(p.fecha)}</div></div>
-        <button class="btn-icon" style="padding:7px 11px;color:var(--red-text)" onclick="confirmarEliminar('pago','${p.id}','¿Eliminar este pago de ${fmt(p.monto)}? Se restará del total pagado de la deuda.','${id}')">Borrar</button>
+        <button class="btn-icon" style="padding:7px 11px;color:var(--red-text)" onclick="event.stopPropagation(); confirmarEliminar('pago','${p.id}','¿Eliminar este pago de ${fmt(p.monto)}? Se restará del total pagado de la deuda.','${id}')">Borrar</button>
       </div>`;
     });
     html += `</div>`;
@@ -1110,11 +1111,11 @@ function renderPagos() {
       const d = db.deudas.find(x=>x.id===p.deudaId)||{concepto:'?'};
       const c = db.clientes.find(x=>x.id===d.clienteId)||{nombre:'?',id:0};
       const [bg,fg] = avColor(c.id);
-      html += `<div class="card-row" style="cursor:default">
+      html += `<div class="card-row" onclick="openFormPago(null,'${p.id}')">
         <div class="avatar avatar-sm" style="background:${bg};color:${fg}">${initials(c.nombre)}</div>
         <div class="row-main"><div class="row-title">${c.nombre}</div><div class="row-sub">${d.concepto} · ${p.metodo}</div></div>
         <div class="row-right"><div class="row-amount" style="color:var(--green)">+${fmt(p.monto)}</div><div class="row-date">${fmtDate(p.fecha)}</div></div>
-        <button class="btn-icon" style="padding:7px 11px;color:var(--red-text);margin-left:10px" onclick="confirmarEliminar('pago','${p.id}','¿Eliminar este pago de ${fmt(p.monto)}? Se restará del total pagado de la deuda.','${p.deudaId}')">Borrar</button>
+        <button class="btn-icon" style="padding:7px 11px;color:var(--red-text);margin-left:10px" onclick="event.stopPropagation(); confirmarEliminar('pago','${p.id}','¿Eliminar este pago de ${fmt(p.monto)}? Se restará del total pagado de la deuda.','${p.deudaId}')">Borrar</button>
       </div>`;
     });
     html += `</div>`;
@@ -1122,32 +1123,65 @@ function renderPagos() {
   el.innerHTML = html;
 }
 
-function openFormPago(deudaId) {
-  const activas = db.deudas.filter(d=>estadoDeuda(d)!=='pagado');
-  if(!activas.length) { alert('No hay deudas pendientes para registrar un pago.'); return; }
+function openFormPago(deudaId, pagoId) {
   const sel = document.getElementById('fp-deuda');
-  sel.innerHTML = activas.map(d=>{
+  // Al editar incluimos TODAS las deudas (la del pago podría estar ya pagada);
+  // al registrar uno nuevo, solo las que aún tienen saldo.
+  const lista = pagoId ? db.deudas.slice() : db.deudas.filter(d=>estadoDeuda(d)!=='pagado');
+  if(!pagoId && !lista.length) { alert('No hay deudas pendientes para registrar un pago.'); return; }
+  sel.innerHTML = lista.map(d=>{
     const c = db.clientes.find(x=>x.id===d.clienteId)||{nombre:'?'};
     return `<option value="${d.id}">${c.nombre} – ${d.concepto}</option>`;
   }).join('');
-  if(deudaId) sel.value = deudaId;
-  document.getElementById('fp-monto').value = '';
-  document.getElementById('fp-notas').value = '';
-  document.getElementById('fp-fecha').value = today();
+  document.getElementById('fp-id').value = '';
+  if(pagoId) {
+    const p = db.pagos.find(x=>x.id===pagoId); if(!p) return;
+    document.getElementById('form-pago-title').textContent = 'Editar pago';
+    document.getElementById('fp-id').value = p.id;
+    sel.value = p.deudaId;
+    document.getElementById('fp-monto').value = p.monto;
+    document.getElementById('fp-metodo').value = p.metodo || 'Efectivo';
+    document.getElementById('fp-fecha').value = p.fecha;
+    document.getElementById('fp-notas').value = p.notas || '';
+  } else {
+    document.getElementById('form-pago-title').textContent = 'Registrar pago';
+    if(deudaId) sel.value = deudaId;
+    document.getElementById('fp-monto').value = '';
+    document.getElementById('fp-metodo').value = 'Efectivo';
+    document.getElementById('fp-notas').value = '';
+    document.getElementById('fp-fecha').value = today();
+  }
   goToScreen('s-form-pago');
 }
+// Recalcula el total pagado de una deuda sumando sus pagos (tope al monto)
+async function recalcularSaldo(deudaId) {
+  const d = db.deudas.find(x=>x.id===deudaId);
+  if(!d) return;
+  const res = await sb.from('pagos').select('monto').eq('deuda_id', deudaId);
+  const suma = (res.data||[]).reduce((a,p)=>a+parseFloat(p.monto),0);
+  await sb.from('deudas').update({ pagado: Math.min(parseFloat(d.monto), suma) }).eq('id', deudaId);
+}
+
 async function guardarPago() {
   const deudaId = document.getElementById('fp-deuda').value;
   const monto = parseFloat(document.getElementById('fp-monto').value);
   const fecha = document.getElementById('fp-fecha').value;
   if(!deudaId || !monto || !fecha) { alert('Completa los campos obligatorios'); return; }
-  const d = db.deudas.find(x=>x.id===deudaId);
-  const nuevoPagado = d ? Math.min(parseFloat(d.monto), parseFloat(d.pagado)+monto) : monto;
-  const upd = await sb.from('deudas').update({ pagado: nuevoPagado }).eq('id', deudaId);
-  if(upd.error) { alert('Error: ' + upd.error.message); return; }
-  const ins = await sb.from('pagos').insert({ deuda_id: deudaId, monto, fecha, metodo: document.getElementById('fp-metodo').value, notas: document.getElementById('fp-notas').value.trim() });
-  if(ins.error) { alert('Error: ' + ins.error.message); return; }
-  await loadData(); showToast('Pago registrado ✓'); goTo('pagos');
+  const datos = { deuda_id: deudaId, monto, fecha, metodo: document.getElementById('fp-metodo').value, notas: document.getElementById('fp-notas').value.trim() };
+  const editId = document.getElementById('fp-id').value;
+  let deudaAnterior = null;
+  if(editId) {
+    const viejo = db.pagos.find(p=>p.id===editId);
+    if(viejo) deudaAnterior = viejo.deudaId;
+    const upd = await sb.from('pagos').update(datos).eq('id', editId);
+    if(upd.error) { alert('Error al guardar: ' + upd.error.message); return; }
+  } else {
+    const ins = await sb.from('pagos').insert(datos);
+    if(ins.error) { alert('Error al guardar: ' + ins.error.message); return; }
+  }
+  await recalcularSaldo(deudaId);
+  if(deudaAnterior && deudaAnterior !== deudaId) await recalcularSaldo(deudaAnterior);
+  await loadData(); showToast(editId ? 'Pago actualizado ✓' : 'Pago registrado ✓'); goTo('pagos');
 }
 
 // ─── ELIMINAR ────────────────────────────────────────────────
