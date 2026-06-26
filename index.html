@@ -388,7 +388,8 @@ select.form-input { appearance: none; -webkit-appearance: none; background-image
       </div>
       <div class="form-group"><label class="form-label">Fecha</label><input class="form-input" id="fp-fecha" type="date"></div>
       <div class="form-group"><label class="form-label">Notas</label><input class="form-input" id="fp-notas" placeholder="Opcional..." type="text"></div>
-      <div style="margin-top:8px"><button class="btn-primary" onclick="guardarPago()">Registrar pago</button></div>
+      <div style="margin-top:8px"><button class="btn-primary" id="fp-guardar-btn" onclick="guardarPago()">Registrar pago</button></div>
+      <div id="fp-borrar-wrap" style="margin-top:10px;display:none"><button class="btn-danger" onclick="borrarPagoActual()">🗑️ Borrar este pago</button></div>
     </div>
   </div>
 
@@ -452,7 +453,7 @@ select.form-input { appearance: none; -webkit-appearance: none; background-image
   // Service Worker: solo cachea la app (mismo origen). NO toca las llamadas a Supabase.
   if ('serviceWorker' in navigator) {
     const swCode = `
-      const CACHE = 'cobrapro-v26';
+      const CACHE = 'cobrapro-v27';
       self.addEventListener('install', e => self.skipWaiting());
       self.addEventListener('activate', e => self.clients.claim());
       self.addEventListener('fetch', e => {
@@ -645,6 +646,43 @@ function fechaPagoCompleto(d) {
     if(acum >= parseFloat(d.monto)) return p.fecha;
   }
   return pagos.length ? pagos[pagos.length-1].fecha : null;
+}
+// Devuelve las líneas de descripción de una deuda (días/registro/plazo, o resumen si está pagada)
+function infoDeuda(d) {
+  const estado = estadoDeuda(d);
+  const regFmt = fmtReg(d.creado);
+  const regStr = regDateStr(d);
+  let info = '';
+  if(estado === 'pagado') {
+    const fPago = fechaPagoCompleto(d);
+    info += `<div class="row-sub" style="font-size:11px">📌 Registrada: ${regFmt}</div>`;
+    if(regStr && d.vencimiento) {
+      const plazo = diffDiasFechas(d.vencimiento, regStr);
+      info += `<div class="row-sub" style="font-size:11px">⏳ Plazo: ${plazo} día${plazo===1?'':'s'} (vencía ${fmtDate(d.vencimiento)})</div>`;
+    }
+    if(fPago) {
+      info += `<div class="row-sub" style="font-size:11px;color:var(--green)">✅ Pagada el ${fmtDate(fPago)}</div>`;
+      if(d.vencimiento) {
+        const dif = diffDiasFechas(fPago, d.vencimiento); // + = pagó tarde, - = pagó antes
+        let txt, col;
+        if(dif < 0)        { txt = `Pagó ${-dif} día${dif===-1?'':'s'} adelantado`; col = 'var(--green)'; }
+        else if(dif === 0) { txt = `Pagó justo el día del vencimiento`; col = 'var(--green)'; }
+        else               { txt = `Pagó ${dif} día${dif===1?'':'s'} retrasado`; col = 'var(--red)'; }
+        info += `<div class="row-sub" style="font-size:11px;color:${col}">⏱️ ${txt}</div>`;
+      }
+    }
+  } else {
+    const dias = diasVencido(d); // positivo = ya venció, negativo = aún falta
+    if(dias > 0)        info += `<div class="row-sub" style="color:var(--red)">⏰ Vencida hace ${dias} día${dias===1?'':'s'}</div>`;
+    else if(dias === 0) info += `<div class="row-sub" style="color:var(--amber)">⚠️ Vence hoy</div>`;
+    else                info += `<div class="row-sub" style="color:var(--green)">📅 Faltan ${-dias} día${dias===-1?'':'s'} para vencer</div>`;
+    info += `<div class="row-sub" style="font-size:11px">📌 Registrada: ${regFmt}</div>`;
+    if(regStr && d.vencimiento) {
+      const plazo = diffDiasFechas(d.vencimiento, regStr);
+      info += `<div class="row-sub" style="font-size:11px">⏳ Plazo: ${plazo} día${plazo===1?'':'s'} (vence ${fmtDate(d.vencimiento)})</div>`;
+    }
+  }
+  return info;
 }
 function estadoDeuda(d) {
   const hoy = new Date(); hoy.setHours(0,0,0,0);
@@ -936,39 +974,7 @@ function renderDeudas() {
     const [bg,fg] = avColor(c.id);
     const pct = Math.min(100, Math.round((parseFloat(d.pagado)/parseFloat(d.monto))*100));
     const saldo = parseFloat(d.monto)-parseFloat(d.pagado);
-    let info = '';
-    const regFmt = fmtReg(d.creado);
-    if(d.estado === 'pagado') {
-      const regStr = regDateStr(d);
-      const fPago = fechaPagoCompleto(d);
-      info += `<div class="row-sub" style="font-size:11px">📌 Registrada: ${regFmt}</div>`;
-      if(regStr && d.vencimiento) {
-        const plazo = diffDiasFechas(d.vencimiento, regStr);
-        info += `<div class="row-sub" style="font-size:11px">⏳ Plazo: ${plazo} día${plazo===1?'':'s'} (vencía ${fmtDate(d.vencimiento)})</div>`;
-      }
-      if(fPago) {
-        info += `<div class="row-sub" style="font-size:11px;color:var(--green)">✅ Pagada el ${fmtDate(fPago)}</div>`;
-        if(d.vencimiento) {
-          const dif = diffDiasFechas(fPago, d.vencimiento); // + = pagó tarde, - = pagó antes
-          let txt, col;
-          if(dif < 0)        { txt = `Pagó ${-dif} día${dif===-1?'':'s'} adelantado`; col = 'var(--green)'; }
-          else if(dif === 0) { txt = `Pagó justo el día del vencimiento`; col = 'var(--green)'; }
-          else               { txt = `Pagó ${dif} día${dif===1?'':'s'} retrasado`; col = 'var(--red)'; }
-          info += `<div class="row-sub" style="font-size:11px;color:${col}">⏱️ ${txt}</div>`;
-        }
-      }
-    } else {
-      const dias = diasVencido(d); // positivo = ya venció, negativo = aún falta
-      if(dias > 0)        info += `<div class="row-sub" style="color:var(--red)">⏰ Vencida hace ${dias} día${dias===1?'':'s'}</div>`;
-      else if(dias === 0) info += `<div class="row-sub" style="color:var(--amber)">⚠️ Vence hoy</div>`;
-      else                info += `<div class="row-sub" style="color:var(--green)">📅 Faltan ${-dias} día${dias===-1?'':'s'} para vencer</div>`;
-      info += `<div class="row-sub" style="font-size:11px">📌 Registrada: ${regFmt}</div>`;
-      const regStr = regDateStr(d);
-      if(regStr && d.vencimiento) {
-        const plazo = diffDiasFechas(d.vencimiento, regStr);
-        info += `<div class="row-sub" style="font-size:11px">⏳ Plazo: ${plazo} día${plazo===1?'':'s'} (vence ${fmtDate(d.vencimiento)})</div>`;
-      }
-    }
+    const info = infoDeuda(d);
     html += `<div class="card-row" onclick="verDeuda('${d.id}')">
       <div class="avatar avatar-sm" style="background:${bg};color:${fg}">${initials(c.nombre)}</div>
       <div class="row-main">
@@ -1032,7 +1038,7 @@ function verDeuda(id) {
           <svg width="14" height="14" fill="none" stroke="var(--green)" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </div>
         <div class="row-main"><div class="row-title" style="color:var(--green)">+${fmt(p.monto)}</div><div class="row-sub">${p.metodo}${p.notas?' · '+p.notas:''} · ${fmtDate(p.fecha)}</div></div>
-        <button class="btn-icon" style="padding:7px 11px;color:var(--red-text)" onclick="event.stopPropagation(); confirmarEliminar('pago','${p.id}','¿Eliminar este pago de ${fmt(p.monto)}? Se restará del total pagado de la deuda.','${id}')">Borrar</button>
+        <span class="chevron">›</span>
       </div>`;
     });
     html += `</div>`;
@@ -1108,14 +1114,24 @@ function renderPagos() {
     const totalMes = g.pagos.reduce((a,p)=>a+parseFloat(p.monto),0);
     html += `<div class="card-section-title" style="display:flex;justify-content:space-between">${g.label}<span style="color:var(--green);text-transform:none;font-size:13px;font-weight:600">${fmt(totalMes)}</span></div><div class="card">`;
     g.pagos.forEach(p => {
-      const d = db.deudas.find(x=>x.id===p.deudaId)||{concepto:'?'};
-      const c = db.clientes.find(x=>x.id===d.clienteId)||{nombre:'?',id:0};
+      const d = db.deudas.find(x=>x.id===p.deudaId);
+      const c = db.clientes.find(x=>x.id===(d&&d.clienteId))||{nombre:'?',id:0};
       const [bg,fg] = avColor(c.id);
+      const concepto = d ? d.concepto : '(deuda eliminada)';
+      const dInfo = d ? infoDeuda(d) : '';
       html += `<div class="card-row" onclick="openFormPago(null,'${p.id}')">
         <div class="avatar avatar-sm" style="background:${bg};color:${fg}">${initials(c.nombre)}</div>
-        <div class="row-main"><div class="row-title">${c.nombre}</div><div class="row-sub">${d.concepto} · ${p.metodo}</div></div>
-        <div class="row-right"><div class="row-amount" style="color:var(--green)">+${fmt(p.monto)}</div><div class="row-date">${fmtDate(p.fecha)}</div></div>
-        <button class="btn-icon" style="padding:7px 11px;color:var(--red-text);margin-left:10px" onclick="event.stopPropagation(); confirmarEliminar('pago','${p.id}','¿Eliminar este pago de ${fmt(p.monto)}? Se restará del total pagado de la deuda.','${p.deudaId}')">Borrar</button>
+        <div class="row-main">
+          <div class="row-title">${concepto}</div>
+          <div class="row-sub">${c.nombre}</div>
+          ${dInfo}
+        </div>
+        <div class="row-right">
+          <div class="row-amount" style="color:var(--green)">+${fmt(p.monto)}</div>
+          <div class="row-date">${p.metodo}</div>
+          <div class="row-date">${fmtDate(p.fecha)}</div>
+        </div>
+        <span class="chevron">›</span>
       </div>`;
     });
     html += `</div>`;
@@ -1137,6 +1153,8 @@ function openFormPago(deudaId, pagoId) {
   if(pagoId) {
     const p = db.pagos.find(x=>x.id===pagoId); if(!p) return;
     document.getElementById('form-pago-title').textContent = 'Editar pago';
+    document.getElementById('fp-guardar-btn').textContent = 'Guardar cambios';
+    document.getElementById('fp-borrar-wrap').style.display = 'block';
     document.getElementById('fp-id').value = p.id;
     sel.value = p.deudaId;
     document.getElementById('fp-monto').value = p.monto;
@@ -1145,6 +1163,8 @@ function openFormPago(deudaId, pagoId) {
     document.getElementById('fp-notas').value = p.notas || '';
   } else {
     document.getElementById('form-pago-title').textContent = 'Registrar pago';
+    document.getElementById('fp-guardar-btn').textContent = 'Registrar pago';
+    document.getElementById('fp-borrar-wrap').style.display = 'none';
     if(deudaId) sel.value = deudaId;
     document.getElementById('fp-monto').value = '';
     document.getElementById('fp-metodo').value = 'Efectivo';
@@ -1182,6 +1202,14 @@ async function guardarPago() {
   await recalcularSaldo(deudaId);
   if(deudaAnterior && deudaAnterior !== deudaId) await recalcularSaldo(deudaAnterior);
   await loadData(); showToast(editId ? 'Pago actualizado ✓' : 'Pago registrado ✓'); goTo('pagos');
+}
+
+// Borrar el pago que se está editando (desde el formulario)
+function borrarPagoActual() {
+  const id = document.getElementById('fp-id').value;
+  if(!id) return;
+  const p = db.pagos.find(x=>x.id===id);
+  confirmarEliminar('pago', id, '¿Eliminar este pago? Se restará del total pagado de la deuda.', p ? p.deudaId : null);
 }
 
 // ─── ELIMINAR ────────────────────────────────────────────────
