@@ -453,7 +453,7 @@ select.form-input { appearance: none; -webkit-appearance: none; background-image
   // Service Worker: solo cachea la app (mismo origen). NO toca las llamadas a Supabase.
   if ('serviceWorker' in navigator) {
     const swCode = `
-      const CACHE = 'cobrapro-v28';
+      const CACHE = 'cobrapro-v29';
       self.addEventListener('install', e => self.skipWaiting());
       self.addEventListener('activate', e => self.clients.claim());
       self.addEventListener('fetch', e => {
@@ -754,7 +754,8 @@ function renderDashboard() {
 
   const porCobrar = db.deudas.filter(d=>d.estado!=='pagado').reduce((a,d)=>a+parseFloat(d.monto)-parseFloat(d.pagado),0);
   const cobrado = db.pagos.reduce((a,p)=>a+parseFloat(p.monto),0);
-  const vencidas = db.deudas.filter(d=>d.estado==='vencido');
+  const vencidas = db.deudas.filter(d=>d.estado==='vencido')
+    .sort((a,b)=> a.vencimiento < b.vencimiento ? -1 : a.vencimiento > b.vencimiento ? 1 : 0); // más días vencida primero
   const hoy = new Date(); hoy.setHours(0,0,0,0);
   const en7 = new Date(hoy); en7.setDate(en7.getDate()+7);
   const proximas = db.deudas.filter(d=>{
