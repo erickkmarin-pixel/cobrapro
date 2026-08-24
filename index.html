@@ -290,9 +290,9 @@ select.form-input { appearance: none; -webkit-appearance: none; background-image
   <!-- DETALLE DEUDA -->
   <div class="screen" id="s-deuda-detalle">
     <div class="topbar">
-      <button class="back-btn" onclick="goTo('deudas')">
+      <button class="back-btn" onclick="volverDeDeuda()">
         <svg width="10" height="17" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 10 17"><path d="M9 1 1 8.5 9 16"/></svg>
-        Deudas
+        <span id="back-deuda-label">Deudas</span>
       </button>
       <div style="display:flex;gap:8px">
         <button class="btn-icon" id="btn-edit-deuda">Editar</button>
@@ -453,7 +453,7 @@ select.form-input { appearance: none; -webkit-appearance: none; background-image
   // Service Worker: solo cachea la app (mismo origen). NO toca las llamadas a Supabase.
   if ('serviceWorker' in navigator) {
     const swCode = `
-      const CACHE = 'cobrapro-v31';
+      const CACHE = 'cobrapro-v32';
       self.addEventListener('install', e => self.skipWaiting());
       self.addEventListener('activate', e => self.clients.claim());
       self.addEventListener('fetch', e => {
@@ -1048,8 +1048,26 @@ function renderDeudas() {
   el.innerHTML = html;
 }
 
+// Recuerda desde dónde se abrió la deuda para que "atrás" regrese al lugar correcto
+let origenDeuda = { tipo: 'deudas' };
+function volverDeDeuda() {
+  if(origenDeuda.tipo === 'cliente' && origenDeuda.id) verCliente(origenDeuda.id);
+  else if(origenDeuda.tipo === 'dashboard') goTo('dashboard');
+  else goTo('deudas');
+}
+
 function verDeuda(id) {
   const d = db.deudas.find(x=>x.id===id); if(!d) return;
+  // Detectar la pantalla desde la que se abrió
+  if(document.getElementById('s-cliente-detalle').classList.contains('active') && clienteActualId) {
+    origenDeuda = { tipo: 'cliente', id: clienteActualId };
+  } else if(document.getElementById('s-dashboard').classList.contains('active')) {
+    origenDeuda = { tipo: 'dashboard' };
+  } else if(document.getElementById('s-deudas').classList.contains('active')) {
+    origenDeuda = { tipo: 'deudas' };
+  }
+  const etiquetas = { cliente: 'Cliente', dashboard: 'Panel', deudas: 'Deudas' };
+  document.getElementById('back-deuda-label').textContent = etiquetas[origenDeuda.tipo] || 'Deudas';
   d.estado = estadoDeuda(d);
   const c = db.clientes.find(x=>x.id===d.clienteId)||{nombre:'?',id:0};
   const [bg,fg] = avColor(c.id);
