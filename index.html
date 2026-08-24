@@ -453,7 +453,7 @@ select.form-input { appearance: none; -webkit-appearance: none; background-image
   // Service Worker: solo cachea la app (mismo origen). NO toca las llamadas a Supabase.
   if ('serviceWorker' in navigator) {
     const swCode = `
-      const CACHE = 'cobrapro-v35';
+      const CACHE = 'cobrapro-v36';
       self.addEventListener('install', e => self.skipWaiting());
       self.addEventListener('activate', e => self.clients.claim());
       self.addEventListener('fetch', e => {
@@ -849,7 +849,6 @@ function renderClientes() {
       <div class="avatar avatar-md" style="background:${bg};color:${fg}">${initials(c.nombre)}</div>
       <div class="row-main">
         <div class="row-title">${c.nombre}</div>
-        <div class="row-sub">${c.tel||c.email||'Sin contacto'}</div>
       </div>
       <div class="row-right">
         ${total > 0 ? `<div class="row-amount" style="color:var(--red)">${fmt(total)}</div>` : `<div class="row-amount" style="color:var(--green)">Al día</div>`}
