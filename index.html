@@ -453,7 +453,7 @@ select.form-input { appearance: none; -webkit-appearance: none; background-image
   // Service Worker: solo cachea la app (mismo origen). NO toca las llamadas a Supabase.
   if ('serviceWorker' in navigator) {
     const swCode = `
-      const CACHE = 'cobrapro-v32';
+      const CACHE = 'cobrapro-v33';
       self.addEventListener('install', e => self.skipWaiting());
       self.addEventListener('activate', e => self.clients.claim());
       self.addEventListener('fetch', e => {
@@ -954,7 +954,7 @@ function renderDeudasCliente() {
       </div>
       <div class="row-right">
         ${badgeEstado(d.estado)}
-        <div class="row-amount" style="margin-top:4px;${d.estado==='pagado'?'color:var(--green)':'color:var(--red)'}">${fmt(saldo)}</div>
+        <div class="row-amount" style="margin-top:4px;${d.estado==='pagado'?'color:var(--green)':'color:var(--red)'}">${d.estado==='pagado'?fmt(d.pagado):fmt(saldo)}</div>
       </div>
       <span class="chevron">›</span>
     </div>`;
@@ -1039,7 +1039,7 @@ function renderDeudas() {
       </div>
       <div class="row-right">
         ${badgeEstado(d.estado)}
-        <div class="row-amount" style="margin-top:4px;${d.estado==='pagado'?'color:var(--green)':'color:var(--red)'}">${fmt(saldo)}</div>
+        <div class="row-amount" style="margin-top:4px;${d.estado==='pagado'?'color:var(--green)':'color:var(--red)'}">${d.estado==='pagado'?fmt(d.pagado):fmt(saldo)}</div>
       </div>
       <span class="chevron">›</span>
     </div>`;
