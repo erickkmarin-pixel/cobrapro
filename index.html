@@ -275,10 +275,10 @@ select.form-input { appearance: none; -webkit-appearance: none; background-image
     </div>
     <div class="scroll pad">
       <div class="segment" id="seg-deudas">
-        <button class="seg-btn" onclick="setFiltroEstado('vencido',this)">Vencidas</button>
+        <button class="seg-btn active" onclick="setFiltroEstado('vencido',this)">Vencidas</button>
         <button class="seg-btn" onclick="setFiltroEstado('pendiente',this)">Pendiente</button>
         <button class="seg-btn" onclick="setFiltroEstado('parcial',this)">Parcial</button>
-        <button class="seg-btn active" onclick="setFiltroEstado('',this)">Todas</button>
+        <button class="seg-btn" onclick="setFiltroEstado('pagado',this)">Pagado</button>
       </div>
       <div id="lista-deudas"></div>
     </div>
@@ -453,7 +453,7 @@ select.form-input { appearance: none; -webkit-appearance: none; background-image
   // Service Worker: solo cachea la app (mismo origen). NO toca las llamadas a Supabase.
   if ('serviceWorker' in navigator) {
     const swCode = `
-      const CACHE = 'cobrapro-v33';
+      const CACHE = 'cobrapro-v34';
       self.addEventListener('install', e => self.skipWaiting());
       self.addEventListener('activate', e => self.clients.claim());
       self.addEventListener('fetch', e => {
@@ -733,7 +733,7 @@ function goToScreen(id) {
 
 // ─── FILTROS ─────────────────────────────────────────────────
 let filtroRiesgo = '';
-let filtroEstado = '';
+let filtroEstado = 'vencido';
 function setFiltroRiesgo(v, btn) {
   filtroRiesgo = v;
   btn.closest('.segment').querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
@@ -1010,12 +1010,15 @@ async function guardarCliente() {
 function renderDeudas() {
   db.deudas.forEach(d=>d.estado=estadoDeuda(d));
   let lista = db.deudas.filter(d => !filtroEstado || d.estado === filtroEstado);
-  if(filtroEstado) {
-    // En Vencidas / Pendiente / Parcial: ordenar por proximidad a vencer (más próximo/vencido primero)
-    lista = lista.slice().sort((a,b) => a.vencimiento < b.vencimiento ? -1 : a.vencimiento > b.vencimiento ? 1 : 0);
+  if(filtroEstado === 'pagado') {
+    // Pagadas: la más recientemente saldada primero
+    lista = lista.slice().sort((a,b) => {
+      const fa = fechaPagoCompleto(a) || '', fb = fechaPagoCompleto(b) || '';
+      return fa > fb ? -1 : fa < fb ? 1 : 0;
+    });
   } else {
-    // En Todas: orden anterior (más recientes primero)
-    lista = lista.slice().reverse();
+    // Vencidas / Pendiente / Parcial: más próximo o más vencido primero
+    lista = lista.slice().sort((a,b) => a.vencimiento < b.vencimiento ? -1 : a.vencimiento > b.vencimiento ? 1 : 0);
   }
   const el = document.getElementById('lista-deudas');
   if(!lista.length) { el.innerHTML = `<div class="empty-state"><div class="icon">📋</div><p>Sin deudas registradas</p></div>`; return; }
