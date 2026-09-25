@@ -543,7 +543,7 @@ select.form-input { appearance: none; -webkit-appearance: none; background-image
   // Service Worker: solo cachea la app (mismo origen). NO toca las llamadas a Supabase.
   if ('serviceWorker' in navigator) {
     const swCode = `
-      const CACHE = 'cobrapro-prueba-5';
+      const CACHE = 'cobrapro-prueba-6';
       self.addEventListener('install', e => self.skipWaiting());
       self.addEventListener('activate', e => self.clients.claim());
       self.addEventListener('fetch', e => {
@@ -1006,7 +1006,7 @@ function renderDashboard() {
   html += `<div class="metrics-grid" style="margin-bottom:10px">
     <div class="metric tocable" onclick="goTo('deudas')" role="button">
       <div class="metric-label">Total por cobrar</div>
-      <div class="metric-value">${fmt(totalPorCobrar)}</div>
+      <div class="metric-value" style="color:var(--green)">${fmt(totalPorCobrar)}</div>
       <div class="metric-note" style="color:var(--text)">${activas.length} ${plural(activas.length, 'deuda activa', 'deudas activas')}</div>
       <div class="desglose">${desglose}</div>
     </div>
