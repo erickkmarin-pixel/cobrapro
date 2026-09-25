@@ -104,6 +104,7 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
 .form-label { display: block; font-size: 12px; color: var(--text2); margin-bottom: 6px; font-weight: 500; }
 .form-input { width: 100%; background: var(--bg2); border: 0.5px solid var(--border2); border-radius: 12px; padding: 13px 14px; font-size: 15px; color: var(--text); font-family: inherit; -webkit-appearance: none; }
 .form-input:focus { outline: none; border-color: var(--green); }
+.form-input:disabled { opacity: .5; }
 select.form-input { appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24'%3E%3Cpath fill='%23888' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; }
 .risk-picker { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
 .risk-option { border: 1px solid var(--border2); border-radius: 12px; padding: 12px 8px; text-align: center; cursor: pointer; transition: all .15s; }
@@ -363,7 +364,14 @@ select.form-input { appearance: none; -webkit-appearance: none; background-image
       <div class="form-group"><label class="form-label">Monto total ($) *</label><input class="form-input" id="fd-monto" placeholder="0.00" type="number" inputmode="decimal"></div>
       <div class="form-group"><label class="form-label">Fecha de registro</label><input class="form-input" id="fd-registro" type="date"></div>
       <div class="form-group"><label class="form-label">Fecha de vencimiento *</label><input class="form-input" id="fd-fecha" type="date"></div>
-      <div style="margin-top:8px"><button class="btn-primary" onclick="guardarDeuda()">Guardar deuda</button></div>
+      <div class="form-group"><label class="form-label">Nota o comentario</label><textarea class="form-input" id="fd-notas" rows="3" placeholder="Ej. Acordamos pagar en dos partes"></textarea></div>
+      <div class="form-group">
+        <label class="form-label">Evidencia (foto de factura, recibo…)</label>
+        <input type="file" id="fd-evidencia" accept="image/*" style="display:none" onchange="elegirEvidencia(this)">
+        <div id="fd-evid-preview"></div>
+        <button type="button" class="btn-secondary" id="fd-evid-btn" onclick="document.getElementById('fd-evidencia').click()">📷 Agregar imagen</button>
+      </div>
+      <div style="margin-top:8px"><button class="btn-primary" id="fd-guardar-btn" onclick="guardarDeuda()">Guardar deuda</button></div>
     </div>
   </div>
 
@@ -379,6 +387,7 @@ select.form-input { appearance: none; -webkit-appearance: none; background-image
     </div>
     <div class="scroll pad">
       <input type="hidden" id="fp-id">
+      <div class="form-group"><label class="form-label">Cliente *</label><select class="form-input" id="fp-cliente" onchange="llenarDeudasPago(this.value)"></select></div>
       <div class="form-group"><label class="form-label">Deuda *</label><select class="form-input" id="fp-deuda"></select></div>
       <div class="form-group"><label class="form-label">Monto ($) *</label><input class="form-input" id="fp-monto" placeholder="0.00" type="number" inputmode="decimal"></div>
       <div class="form-group"><label class="form-label">Método</label>
@@ -453,7 +462,7 @@ select.form-input { appearance: none; -webkit-appearance: none; background-image
   // Service Worker: solo cachea la app (mismo origen). NO toca las llamadas a Supabase.
   if ('serviceWorker' in navigator) {
     const swCode = `
-      const CACHE = 'cobrapro-v36';
+      const CACHE = 'cobrapro-v37';
       self.addEventListener('install', e => self.skipWaiting());
       self.addEventListener('activate', e => self.clients.claim());
       self.addEventListener('fetch', e => {
@@ -591,7 +600,7 @@ async function loadData() {
     console.error(c.error || d.error || p.error);
   }
   db.clientes = (c.data || []).map(r => ({ id:r.id, nombre:r.nombre, tel:r.tel, email:r.email, riesgo:r.riesgo, notas:r.notas }));
-  db.deudas   = (d.data || []).map(r => ({ id:r.id, clienteId:r.cliente_id, concepto:r.concepto, monto:r.monto, pagado:r.pagado, vencimiento:r.vencimiento, creado:r.created_at }));
+  db.deudas   = (d.data || []).map(r => ({ id:r.id, clienteId:r.cliente_id, concepto:r.concepto, monto:r.monto, pagado:r.pagado, vencimiento:r.vencimiento, creado:r.created_at, notas:r.notas||'', evidencia:r.evidencia||null }));
   db.pagos    = (p.data || []).map(r => ({ id:r.id, deudaId:r.deuda_id, monto:r.monto, fecha:r.fecha, metodo:r.metodo, notas:r.notas }));
 }
 
@@ -1115,6 +1124,10 @@ function verDeuda(id) {
     <div class="card" style="margin-bottom:16px">
       <div class="stat-row"><span class="stat-row-label">Vencimiento</span><span class="stat-row-value">${fmtDate(d.vencimiento)}</span></div>
     </div>
+    ${d.notas ? `<div class="card-section-title">Nota</div>
+    <div class="card" style="padding:14px 16px;margin-bottom:16px;font-size:14px;line-height:1.5;white-space:pre-wrap">${esc(d.notas)}</div>` : ''}
+    ${d.evidencia ? `<div class="card-section-title">Evidencia</div>
+    <div class="card" style="padding:10px;margin-bottom:16px"><div id="evid-detalle" style="padding:30px;text-align:center;color:var(--text2);font-size:13px">Cargando imagen…</div></div>` : ''}
     <button class="btn-primary" style="margin-bottom:16px" onclick="openFormPago('${id}')">💰 Registrar pago</button>`;
 
   if(pagosD.length) {
@@ -1133,9 +1146,108 @@ function verDeuda(id) {
   html += `</div>`;
 
   document.getElementById('detalle-deuda-content').innerHTML = html;
+  if(d.evidencia) {
+    const ruta = d.evidencia;
+    urlEvidencia(ruta).then(url => {
+      const cont = document.getElementById('evid-detalle');
+      if(!cont || d.evidencia !== ruta) return;
+      cont.style.padding = '0';
+      cont.innerHTML = url
+        ? `<a href="${url}" target="_blank" rel="noopener"><img src="${url}" alt="Evidencia de ${esc(d.concepto)}" style="width:100%;max-height:420px;object-fit:contain;border-radius:10px;display:block"></a>
+           <div style="text-align:center;font-size:12px;color:var(--text2);padding:8px 0 2px">Toca la imagen para verla en grande</div>`
+        : `<div style="padding:30px;text-align:center;color:var(--red);font-size:13px">No se pudo cargar la imagen</div>`;
+    });
+  }
   document.getElementById('btn-edit-deuda').onclick = () => openFormDeuda(id);
   document.getElementById('btn-del-deuda').onclick = () => confirmarEliminar('deuda', id, `¿Eliminar la deuda "${d.concepto}"? Se eliminará también su historial de pagos.`);
   goToScreen('s-deuda-detalle');
+}
+
+// ─── EVIDENCIAS (imágenes en Supabase Storage, bucket privado) ───
+const BUCKET_EVID = 'evidencias';
+let evidNueva = null;    // imagen comprimida pendiente de subir
+let evidQuitar = false;  // el usuario quitó la imagen existente
+let evidActual = null;   // ruta de la imagen ya guardada (al editar)
+
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
+
+// Reduce la foto (máx. 1600 px por lado, JPEG) para que suba rápido y ocupe poco
+function comprimirImagen(file, maxLado = 1600, calidad = 0.8) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const escala = Math.min(1, maxLado / Math.max(img.width, img.height));
+      const w = Math.round(img.width * escala), h = Math.round(img.height * escala);
+      const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+      cv.getContext('2d').drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(url);
+      cv.toBlob(b => b ? resolve(b) : reject(new Error('No se pudo procesar la imagen')), 'image/jpeg', calidad);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Ese formato de imagen no es compatible')); };
+    img.src = url;
+  });
+}
+
+async function subirEvidencia(blob) {
+  const { data } = await sb.auth.getSession();
+  const uid = data.session && data.session.user ? data.session.user.id : null;
+  if(!uid) throw new Error('Tu sesión expiró, vuelve a entrar.');
+  const nombre = (crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random().toString(36).slice(2)) + '.jpg';
+  const ruta = `${uid}/${nombre}`;   // cada usuario en su propia carpeta
+  const { error } = await sb.storage.from(BUCKET_EVID).upload(ruta, blob, { contentType: 'image/jpeg', upsert: false });
+  if(error) throw error;
+  return ruta;
+}
+
+// Enlace temporal (1 hora) para ver una imagen privada
+async function urlEvidencia(ruta) {
+  const { data, error } = await sb.storage.from(BUCKET_EVID).createSignedUrl(ruta, 3600);
+  return error ? null : data.signedUrl;
+}
+
+async function borrarEvidencias(rutas) {
+  const lista = (rutas || []).filter(Boolean);
+  if(lista.length) await sb.storage.from(BUCKET_EVID).remove(lista);
+}
+
+function pintarEvidForm(src) {
+  const cont = document.getElementById('fd-evid-preview');
+  const btn = document.getElementById('fd-evid-btn');
+  if(src) {
+    cont.innerHTML = `<div style="position:relative;margin-bottom:10px">
+      <img src="${src}" alt="Evidencia" style="width:100%;max-height:260px;object-fit:contain;border-radius:12px;background:var(--bg2);display:block">
+      <button type="button" onclick="quitarEvidencia()" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,.7);color:#fff;border:none;border-radius:20px;padding:6px 12px;font-size:13px;cursor:pointer;font-family:inherit">✕ Quitar</button>
+    </div>`;
+    btn.textContent = '🔄 Cambiar imagen';
+  } else {
+    cont.innerHTML = '';
+    btn.textContent = '📷 Agregar imagen';
+  }
+}
+
+async function elegirEvidencia(input) {
+  const file = input.files && input.files[0];
+  input.value = ''; // permite volver a elegir el mismo archivo
+  if(!file) return;
+  if(!file.type.startsWith('image/')) { alert('Selecciona una imagen (foto de la factura o recibo).'); return; }
+  try {
+    document.getElementById('fd-evid-btn').textContent = 'Procesando imagen…';
+    evidNueva = await comprimirImagen(file);
+    evidQuitar = false;
+    pintarEvidForm(URL.createObjectURL(evidNueva));
+  } catch(e) {
+    alert(e.message);
+    pintarEvidForm(null);
+  }
+}
+
+function quitarEvidencia() {
+  evidNueva = null;
+  evidQuitar = true;
+  pintarEvidForm(null);
 }
 
 // ─── FORM DEUDA ──────────────────────────────────────────────
@@ -1143,6 +1255,8 @@ function openFormDeuda(id, preClienteId) {
   const sel = document.getElementById('fd-cliente');
   if(!db.clientes.length) { alert('Primero agrega al menos un cliente.'); return; }
   sel.innerHTML = db.clientes.map(c=>`<option value="${c.id}">${c.nombre}</option>`).join('');
+  evidNueva = null; evidQuitar = false; evidActual = null;
+  pintarEvidForm(null);
   if(id) {
     const d = db.deudas.find(x=>x.id===id);
     document.getElementById('form-deuda-title').textContent = 'Editar deuda';
@@ -1152,6 +1266,15 @@ function openFormDeuda(id, preClienteId) {
     document.getElementById('fd-monto').value = d.monto;
     document.getElementById('fd-registro').value = d.creado ? new Date(d.creado).toISOString().split('T')[0] : today();
     document.getElementById('fd-fecha').value = d.vencimiento;
+    document.getElementById('fd-notas').value = d.notas || '';
+    if(d.evidencia) {
+      evidActual = d.evidencia;
+      document.getElementById('fd-evid-btn').textContent = 'Cargando imagen…';
+      urlEvidencia(d.evidencia).then(url => {
+        // Solo pintar si el usuario no cambió o quitó la imagen mientras cargaba
+        if(evidActual === d.evidencia && !evidNueva && !evidQuitar) pintarEvidForm(url);
+      });
+    }
   } else {
     document.getElementById('form-deuda-title').textContent = 'Nueva deuda';
     document.getElementById('fd-id').value = '';
@@ -1159,6 +1282,7 @@ function openFormDeuda(id, preClienteId) {
     document.getElementById('fd-monto').value = '';
     document.getElementById('fd-registro').value = today();
     document.getElementById('fd-fecha').value = '';
+    document.getElementById('fd-notas').value = '';
     if(preClienteId) sel.value = preClienteId;
   }
   goToScreen('s-form-deuda');
@@ -1171,12 +1295,42 @@ async function guardarDeuda() {
   if(!concepto || !monto || !fecha || !clienteId) { alert('Completa todos los campos obligatorios'); return; }
   const fechaReg = document.getElementById('fd-registro').value || today();
   const createdAt = fechaReg + 'T12:00:00';
+  const notas = document.getElementById('fd-notas').value.trim();
   const id = document.getElementById('fd-id').value;
-  let res;
-  if(id) res = await sb.from('deudas').update({ concepto, monto, vencimiento: fecha, cliente_id: clienteId, created_at: createdAt }).eq('id', id);
-  else   res = await sb.from('deudas').insert({ cliente_id: clienteId, concepto, monto, pagado: 0, vencimiento: fecha, created_at: createdAt });
-  if(res.error) { alert('Error al guardar: ' + res.error.message); return; }
-  await loadData(); showToast('Deuda guardada ✓'); goTo('deudas');
+
+  const btn = document.getElementById('fd-guardar-btn');
+  btn.disabled = true; btn.textContent = evidNueva ? 'Subiendo imagen…' : 'Guardando…';
+  let rutaNueva = null;
+  try {
+    // 1. Subir la imagen nueva (si hay)
+    let evidencia = evidActual;
+    let rutaVieja = null;
+    if(evidNueva) {
+      rutaNueva = await subirEvidencia(evidNueva);
+      evidencia = rutaNueva;
+      rutaVieja = evidActual;
+    } else if(evidQuitar) {
+      evidencia = null;
+      rutaVieja = evidActual;
+    }
+    btn.textContent = 'Guardando…';
+    // 2. Guardar la deuda
+    const datos = { concepto, monto, vencimiento: fecha, cliente_id: clienteId, created_at: createdAt, notas: notas || null, evidencia };
+    const res = id
+      ? await sb.from('deudas').update(datos).eq('id', id)
+      : await sb.from('deudas').insert({ ...datos, pagado: 0 });
+    if(res.error) throw res.error;
+    rutaNueva = null; // ya quedó asociada, no se limpia
+    // 3. Borrar la imagen anterior si se reemplazó o quitó
+    if(rutaVieja) await borrarEvidencias([rutaVieja]);
+    evidNueva = null; evidQuitar = false;
+    await loadData(); showToast('Deuda guardada ✓'); goTo('deudas');
+  } catch(e) {
+    if(rutaNueva) await borrarEvidencias([rutaNueva]); // no dejar imágenes huérfanas
+    alert('Error al guardar: ' + (e.message || e));
+  } finally {
+    btn.disabled = false; btn.textContent = 'Guardar deuda';
+  }
 }
 
 // ─── PAGOS ───────────────────────────────────────────────────
@@ -1225,24 +1379,61 @@ function renderPagos() {
   el.innerHTML = html;
 }
 
-function openFormPago(deudaId, pagoId) {
+// ─── Selección Cliente → Deuda en el formulario de pago ───
+// Al editar se incluyen también deudas ya pagadas (la del pago podría estarlo);
+// al registrar uno nuevo, solo las que aún tienen saldo.
+let pagoEditando = false;
+function deudasParaPago(clienteId) {
+  return db.deudas
+    .filter(d => d.clienteId === clienteId && (pagoEditando || estadoDeuda(d) !== 'pagado'))
+    .sort((a,b) => a.vencimiento < b.vencimiento ? -1 : a.vencimiento > b.vencimiento ? 1 : 0);
+}
+function llenarClientesPago(clienteSel) {
+  const sel = document.getElementById('fp-cliente');
+  const clientes = db.clientes
+    .filter(c => deudasParaPago(c.id).length)
+    .sort((a,b) => a.nombre.localeCompare(b.nombre, 'es'));
+  sel.innerHTML = '<option value="">Selecciona un cliente</option>' +
+    clientes.map(c => `<option value="${c.id}">${esc(c.nombre)}</option>`).join('');
+  if(!clienteSel && clientes.length === 1) clienteSel = clientes[0].id; // si solo hay uno, se elige solo
+  sel.value = clienteSel || '';
+  return { cantidad: clientes.length, elegido: sel.value };
+}
+function llenarDeudasPago(clienteId, deudaSel) {
   const sel = document.getElementById('fp-deuda');
-  // Al editar incluimos TODAS las deudas (la del pago podría estar ya pagada);
-  // al registrar uno nuevo, solo las que aún tienen saldo.
-  const lista = pagoId ? db.deudas.slice() : db.deudas.filter(d=>estadoDeuda(d)!=='pagado');
-  if(!pagoId && !lista.length) { alert('No hay deudas pendientes para registrar un pago.'); return; }
-  sel.innerHTML = lista.map(d=>{
-    const c = db.clientes.find(x=>x.id===d.clienteId)||{nombre:'?'};
-    return `<option value="${d.id}">${c.nombre} – ${d.concepto}</option>`;
+  if(!clienteId) {
+    sel.innerHTML = '<option value="">Primero elige un cliente</option>';
+    sel.disabled = true;
+    return;
+  }
+  const lista = deudasParaPago(clienteId);
+  sel.disabled = false;
+  const opciones = lista.map(d => {
+    const saldo = parseFloat(d.monto) - parseFloat(d.pagado);
+    const detalle = estadoDeuda(d) === 'pagado' ? 'pagada' : `debe ${fmt(saldo)}`;
+    return `<option value="${d.id}">${esc(d.concepto)} — ${detalle}</option>`;
   }).join('');
+  sel.innerHTML = (lista.length > 1 ? '<option value="">Selecciona una deuda</option>' : '') + opciones;
+  if(deudaSel) sel.value = deudaSel;
+}
+
+function openFormPago(deudaId, pagoId) {
+  pagoEditando = !!pagoId;
+  // Si viene de una deuda o se edita un pago, dejar cliente y deuda ya seleccionados
+  let deudaSel = '';
+  if(pagoId) { const p = db.pagos.find(x=>x.id===pagoId); if(!p) return; deudaSel = p.deudaId; }
+  else if(deudaId) deudaSel = deudaId;
+  const dSel = deudaSel ? db.deudas.find(x=>x.id===deudaSel) : null;
+  const { cantidad, elegido } = llenarClientesPago(dSel ? dSel.clienteId : '');
+  if(!pagoId && !cantidad) { alert('No hay deudas pendientes para registrar un pago.'); return; }
+  llenarDeudasPago(elegido, deudaSel);
   document.getElementById('fp-id').value = '';
   if(pagoId) {
-    const p = db.pagos.find(x=>x.id===pagoId); if(!p) return;
+    const p = db.pagos.find(x=>x.id===pagoId);
     document.getElementById('form-pago-title').textContent = 'Editar pago';
     document.getElementById('fp-guardar-btn').textContent = 'Guardar cambios';
     document.getElementById('fp-borrar-wrap').style.display = 'block';
     document.getElementById('fp-id').value = p.id;
-    sel.value = p.deudaId;
     document.getElementById('fp-monto').value = p.monto;
     document.getElementById('fp-metodo').value = p.metodo || 'Efectivo';
     document.getElementById('fp-fecha').value = p.fecha;
@@ -1251,7 +1442,6 @@ function openFormPago(deudaId, pagoId) {
     document.getElementById('form-pago-title').textContent = 'Registrar pago';
     document.getElementById('fp-guardar-btn').textContent = 'Registrar pago';
     document.getElementById('fp-borrar-wrap').style.display = 'none';
-    if(deudaId) sel.value = deudaId;
     document.getElementById('fp-monto').value = '';
     document.getElementById('fp-metodo').value = 'Efectivo';
     document.getElementById('fp-notas').value = '';
@@ -1272,7 +1462,9 @@ async function guardarPago() {
   const deudaId = document.getElementById('fp-deuda').value;
   const monto = parseFloat(document.getElementById('fp-monto').value);
   const fecha = document.getElementById('fp-fecha').value;
-  if(!deudaId || !monto || !fecha) { alert('Completa los campos obligatorios'); return; }
+  if(!document.getElementById('fp-cliente').value) { alert('Selecciona un cliente'); return; }
+  if(!deudaId) { alert('Selecciona la deuda a la que corresponde el pago'); return; }
+  if(!monto || !fecha) { alert('Completa el monto y la fecha'); return; }
   const datos = { deuda_id: deudaId, monto, fecha, metodo: document.getElementById('fp-metodo').value, notas: document.getElementById('fp-notas').value.trim() };
   const editId = document.getElementById('fp-id').value;
   let deudaAnterior = null;
@@ -1307,9 +1499,13 @@ function confirmarEliminar(tipo, id, msg, extra) {
   modalAction = async () => {
     let res;
     if(tipo === 'cliente') {
+      const rutas = db.deudas.filter(d=>d.clienteId===id).map(d=>d.evidencia);
       res = await sb.from('clientes').delete().eq('id', id);
+      if(!res.error) await borrarEvidencias(rutas);
     } else if(tipo === 'deuda') {
+      const dd = db.deudas.find(x=>x.id===id);
       res = await sb.from('deudas').delete().eq('id', id);
+      if(!res.error && dd) await borrarEvidencias([dd.evidencia]);
     } else if(tipo === 'pago') {
       res = await sb.from('pagos').delete().eq('id', id);
       if(!res.error) {
