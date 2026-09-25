@@ -78,13 +78,13 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
 
 /* METRICS */
 .metrics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
-.metric { background: var(--bg2); border-radius: 14px; padding: 14px; }
+.metric { background: var(--bg2); border-radius: 14px; padding: 14px 12px; }
 .metric.tocable { cursor: pointer; }
 .metric-label { font-size: var(--fs-xs); color: var(--text2); margin-bottom: 4px; }
 .metric-value { font-size: var(--fs-lg); font-weight: 700; letter-spacing: -.3px; font-variant-numeric: tabular-nums; }
 .metric-note { font-size: var(--fs-xs); margin-top: 3px; }
-.desglose { display: grid; gap: 3px; margin-top: 6px; }
-.desglose-item { display: flex; align-items: center; gap: 6px; font-size: var(--fs-xs); color: var(--text2); font-variant-numeric: tabular-nums; }
+.desglose { display: flex; flex-wrap: wrap; gap: 3px 6px; margin-top: 6px; }
+.desglose-item { display: flex; align-items: center; gap: 4px; white-space: nowrap; font-size: var(--fs-xs); color: var(--text2); font-variant-numeric: tabular-nums; }
 .desglose-item i { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
 
 /* PANEL: número principal */
@@ -543,7 +543,7 @@ select.form-input { appearance: none; -webkit-appearance: none; background-image
   // Service Worker: solo cachea la app (mismo origen). NO toca las llamadas a Supabase.
   if ('serviceWorker' in navigator) {
     const swCode = `
-      const CACHE = 'cobrapro-prueba-3';
+      const CACHE = 'cobrapro-prueba-4';
       self.addEventListener('install', e => self.skipWaiting());
       self.addEventListener('activate', e => self.clients.claim());
       self.addEventListener('fetch', e => {
@@ -997,10 +997,11 @@ function renderDashboard() {
   // Desglose de las deudas activas por estado
   const nAct = contarPorEstado(activas);
   const desglose = [
-    ['vencido', 'vencida', 'vencidas', 'var(--red)'],
-    ['pendiente', 'pendiente', 'pendientes', 'var(--amber)'],
-    ['parcial', 'parcial', 'parciales', 'var(--blue)'],
-  ].map(([k, uno, varios, col]) => `<span class="desglose-item"><i style="background:${col}"></i>${nAct[k]} ${plural(nAct[k], uno, varios)}</span>`).join('');
+    ['vencido', 'venc.', 'vencida', 'vencidas', 'var(--red)'],
+    ['pendiente', 'pend.', 'pendiente', 'pendientes', 'var(--amber)'],
+    ['parcial', 'parc.', 'parcial', 'parciales', 'var(--blue)'],
+  ].map(([k, corto, uno, varios, col]) =>
+    `<span class="desglose-item" style="color:${col}" aria-label="${nAct[k]} ${plural(nAct[k], uno, varios)}">${nAct[k]} ${corto}</span>`).join('');
 
   html += `<div class="metrics-grid" style="margin-bottom:10px">
     <div class="metric tocable" onclick="goTo('deudas')" role="button">
