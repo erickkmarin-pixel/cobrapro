@@ -83,6 +83,9 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
 .metric-label { font-size: var(--fs-xs); color: var(--text2); margin-bottom: 4px; }
 .metric-value { font-size: var(--fs-lg); font-weight: 700; letter-spacing: -.3px; font-variant-numeric: tabular-nums; }
 .metric-note { font-size: var(--fs-xs); margin-top: 3px; }
+.desglose { display: grid; gap: 3px; margin-top: 6px; }
+.desglose-item { display: flex; align-items: center; gap: 6px; font-size: var(--fs-xs); color: var(--text2); font-variant-numeric: tabular-nums; }
+.desglose-item i { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
 
 /* PANEL: número principal */
 .hero { background: var(--bg2); border-radius: 16px; padding: 16px; margin-bottom: 10px; border: 1px solid transparent; }
@@ -540,7 +543,7 @@ select.form-input { appearance: none; -webkit-appearance: none; background-image
   // Service Worker: solo cachea la app (mismo origen). NO toca las llamadas a Supabase.
   if ('serviceWorker' in navigator) {
     const swCode = `
-      const CACHE = 'cobrapro-prueba-2';
+      const CACHE = 'cobrapro-prueba-3';
       self.addEventListener('install', e => self.skipWaiting());
       self.addEventListener('activate', e => self.clients.claim());
       self.addEventListener('fetch', e => {
@@ -991,7 +994,28 @@ function renderDashboard() {
       <div class="hero-s" style="margin-top:4px">Todos tus cobros están al día.</div>
     </div>`;
   }
+  // Desglose de las deudas activas por estado
+  const nAct = contarPorEstado(activas);
+  const desglose = [
+    ['vencido', 'vencida', 'vencidas', 'var(--red)'],
+    ['pendiente', 'pendiente', 'pendientes', 'var(--amber)'],
+    ['parcial', 'parcial', 'parciales', 'var(--blue)'],
+  ].map(([k, uno, varios, col]) => `<span class="desglose-item"><i style="background:${col}"></i>${nAct[k]} ${plural(nAct[k], uno, varios)}</span>`).join('');
+
   html += `<div class="metrics-grid" style="margin-bottom:10px">
+    <div class="metric tocable" onclick="goTo('deudas')" role="button">
+      <div class="metric-label">Total por cobrar</div>
+      <div class="metric-value">${fmt(totalPorCobrar)}</div>
+      <div class="metric-note" style="color:var(--text)">${activas.length} ${plural(activas.length, 'deuda activa', 'deudas activas')}</div>
+      <div class="desglose">${desglose}</div>
+    </div>
+    <div class="metric tocable" onclick="goTo('pagos')" role="button">
+      <div class="metric-label">Total cobrado</div>
+      <div class="metric-value" style="color:var(--green)">${fmt(totalCobrado)}</div>
+      <div class="metric-note" style="color:var(--text2)">${db.pagos.length} ${plural(db.pagos.length, 'pago', 'pagos')} en total</div>
+    </div>
+  </div>
+  <div class="metrics-grid" style="margin-bottom:6px">
     <div class="metric tocable" onclick="irADeudas('pendiente')" role="button">
       <div class="metric-label">Vence en 7 días</div>
       <div class="metric-value" style="color:${totalPronto > 0 ? 'var(--amber)' : 'var(--text)'}">${fmt(totalPronto)}</div>
@@ -1001,18 +1025,6 @@ function renderDashboard() {
       <div class="metric-label">Cobrado en ${nombreMes(mesIdx)}</div>
       <div class="metric-value" style="color:var(--green)">${fmt(cobradoMes)}</div>
       ${variacion}
-    </div>
-  </div>
-  <div class="metrics-grid" style="margin-bottom:6px">
-    <div class="metric tocable" onclick="goTo('deudas')" role="button">
-      <div class="metric-label">Total por cobrar</div>
-      <div class="metric-value">${fmt(totalPorCobrar)}</div>
-      <div class="metric-note" style="color:var(--text2)">${activas.length} ${plural(activas.length, 'deuda activa', 'deudas activas')}</div>
-    </div>
-    <div class="metric tocable" onclick="goTo('pagos')" role="button">
-      <div class="metric-label">Total cobrado</div>
-      <div class="metric-value" style="color:var(--green)">${fmt(totalCobrado)}</div>
-      <div class="metric-note" style="color:var(--text2)">${db.pagos.length} ${plural(db.pagos.length, 'pago', 'pagos')} en total</div>
     </div>
   </div>`;
 
