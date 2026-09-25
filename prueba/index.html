@@ -543,7 +543,7 @@ select.form-input { appearance: none; -webkit-appearance: none; background-image
   // Service Worker: solo cachea la app (mismo origen). NO toca las llamadas a Supabase.
   if ('serviceWorker' in navigator) {
     const swCode = `
-      const CACHE = 'cobrapro-prueba-4';
+      const CACHE = 'cobrapro-prueba-5';
       self.addEventListener('install', e => self.skipWaiting());
       self.addEventListener('activate', e => self.clients.claim());
       self.addEventListener('fetch', e => {
@@ -1375,12 +1375,14 @@ function contarPorEstado(deudas) {
 function primerFiltroConDatos(n, actual) {
   return n[actual] > 0 ? actual : (ORDEN_FILTROS.find(f => n[f] > 0) || actual);
 }
+// Color de cada estado (el mismo de sus etiquetas y del desglose del Panel)
+const COLOR_FILTRO = { vencido: 'var(--red)', pendiente: 'var(--amber)', parcial: 'var(--blue)', pagado: 'var(--green)' };
 function pintarContadores(segId, n, activo) {
   document.querySelectorAll(`#${segId} .seg-btn`).forEach(b => {
     const f = b.dataset.f;
     b.classList.toggle('active', f === activo);
     const sp = b.querySelector('.seg-n');
-    if(sp) { sp.textContent = n[f]; sp.classList.toggle('alerta', f === 'vencido' && n[f] > 0); }
+    if(sp) { sp.textContent = n[f]; sp.style.color = n[f] > 0 ? COLOR_FILTRO[f] : ''; }  // en 0 queda gris
   });
 }
 function ordenarDeudas(lista, filtro) {
