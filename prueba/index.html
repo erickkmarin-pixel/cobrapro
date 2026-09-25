@@ -193,6 +193,21 @@ select.form-input { appearance: none; -webkit-appearance: none; background-image
 .vista-toggle button { background: none; border: none; color: var(--text2); font-size: var(--fs-xs); padding: 0 10px; min-height: 30px; border-radius: 8px; font-family: inherit; cursor: pointer; }
 .vista-toggle button.on { background: var(--bg2); color: var(--text); font-weight: 600; }
 
+/* LÍNEA DE TIEMPO (detalle de deuda) */
+.timeline { display: flex; align-items: flex-start; gap: 10px; }
+.tl-punto { flex-shrink: 0; }
+.tl-punto.der { text-align: right; }
+.tl-fecha { font-size: var(--fs-sm); font-weight: 600; font-variant-numeric: tabular-nums; }
+.tl-k { font-size: var(--fs-xs); color: var(--text2); margin-top: 2px; }
+.tl-linea { flex: 1; min-width: 40px; position: relative; height: 17px; display: flex; align-items: center; justify-content: center; }
+.tl-linea::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; border-top: 1.5px dashed var(--border2); }
+.tl-linea::after { content: ''; position: absolute; right: -1px; top: 50%; width: 6px; height: 6px; margin-top: -3px; border-top: 1.5px solid var(--border2); border-right: 1.5px solid var(--border2); transform: rotate(45deg); }
+.tl-linea span { position: relative; background: var(--bg2); padding: 0 6px; font-size: var(--fs-xs); color: var(--text2); white-space: nowrap; }
+
+/* DOS CAMPOS LADO A LADO */
+.form-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+.form-row .form-input { padding-left: 10px; padding-right: 10px; min-width: 0; }
+
 /* RECORDATORIO */
 .bubble { background: #0b3d2e; color: #e9f5ef; border-radius: 14px 14px 14px 4px; padding: 12px 14px; font-size: var(--fs-sm); line-height: 1.45; white-space: pre-wrap; }
 .nota-mini { font-size: var(--fs-xs); color: var(--text2); text-align: center; }
@@ -409,8 +424,10 @@ select.form-input { appearance: none; -webkit-appearance: none; background-image
       <div class="form-group"><label class="form-label">Cliente *</label><select class="form-input" id="fd-cliente"></select></div>
       <div class="form-group"><label class="form-label">Concepto *</label><input class="form-input" id="fd-concepto" placeholder="Ej. Préstamo personal" type="text"></div>
       <div class="form-group"><label class="form-label">Monto total ($) *</label><input class="form-input" id="fd-monto" placeholder="0.00" type="number" inputmode="decimal"></div>
-      <div class="form-group"><label class="form-label">Fecha de registro</label><input class="form-input" id="fd-registro" type="date"></div>
-      <div class="form-group"><label class="form-label">Fecha de vencimiento *</label><input class="form-input" id="fd-fecha" type="date"></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label" for="fd-registro">Fecha de registro</label><input class="form-input" id="fd-registro" type="date"></div>
+        <div class="form-group"><label class="form-label" for="fd-fecha">Vencimiento *</label><input class="form-input" id="fd-fecha" type="date"></div>
+      </div>
       <div class="form-group"><label class="form-label">Nota o comentario</label><textarea class="form-input" id="fd-notas" rows="3" placeholder="Ej. Acordamos pagar en dos partes"></textarea></div>
       <div class="form-group">
         <label class="form-label">Evidencia (foto de factura, recibo…)</label>
@@ -523,7 +540,7 @@ select.form-input { appearance: none; -webkit-appearance: none; background-image
   // Service Worker: solo cachea la app (mismo origen). NO toca las llamadas a Supabase.
   if ('serviceWorker' in navigator) {
     const swCode = `
-      const CACHE = 'cobrapro-prueba-1';
+      const CACHE = 'cobrapro-prueba-2';
       self.addEventListener('install', e => self.skipWaiting());
       self.addEventListener('activate', e => self.clients.claim());
       self.addEventListener('fetch', e => {
@@ -942,6 +959,7 @@ function renderDashboard() {
   const vencidas = activas.filter(d => urgencia(d) === 'vencida');
   const pronto = activas.filter(d => urgencia(d) === 'pronto');
   const totalVencido = suma(vencidas), totalPronto = suma(pronto), totalPorCobrar = suma(activas);
+  const totalCobrado = db.pagos.reduce((a, p) => a + parseFloat(p.monto), 0);
 
   // Cobrado este mes comparado con el anterior (según la fecha de cada pago)
   const hoy = new Date();
@@ -985,7 +1003,18 @@ function renderDashboard() {
       ${variacion}
     </div>
   </div>
-  <div class="row-sub" style="margin:0 4px 4px">Total por cobrar: <b style="color:var(--text)">${fmt(totalPorCobrar)}</b></div>`;
+  <div class="metrics-grid" style="margin-bottom:6px">
+    <div class="metric tocable" onclick="goTo('deudas')" role="button">
+      <div class="metric-label">Total por cobrar</div>
+      <div class="metric-value">${fmt(totalPorCobrar)}</div>
+      <div class="metric-note" style="color:var(--text2)">${activas.length} ${plural(activas.length, 'deuda activa', 'deudas activas')}</div>
+    </div>
+    <div class="metric tocable" onclick="goTo('pagos')" role="button">
+      <div class="metric-label">Total cobrado</div>
+      <div class="metric-value" style="color:var(--green)">${fmt(totalCobrado)}</div>
+      <div class="metric-note" style="color:var(--text2)">${db.pagos.length} ${plural(db.pagos.length, 'pago', 'pagos')} en total</div>
+    </div>
+  </div>`;
 
   // 2. Para cobrar hoy: clientes con deudas vencidas o que vencen hoy
   const porCliente = {};
@@ -1490,20 +1519,29 @@ function verDeuda(id) {
   else if(n > 0)       { situacion = `Vencida hace ${txtDias(n)}`; colSit = 'var(--red)'; }
   else if(n === 0)     { situacion = 'Vence hoy'; colSit = 'var(--amber)'; }
   else                 { situacion = `Vence en ${txtDias(-n)}`; colSit = -n <= 7 ? 'var(--amber)' : 'var(--text)'; }
-  const filas = [
-    ['Situación', `<span style="color:${colSit};font-weight:600">${situacion}</span>`],
-    ['Vencimiento', fmtDate(d.vencimiento)],
-    ['Registrada', fmtReg(d.creado)],
-  ];
-  if(regStr && d.vencimiento) filas.push(['Plazo', txtDias(diffDiasFechas(d.vencimiento, regStr))]);
+  // Si está pagada: ¿pagó antes o después del vencimiento?
+  let puntualidad = '';
   if(est === 'pagado') {
     const f = fechaPagoCompleto(d);
     if(f && d.vencimiento) {
       const dif = diffDiasFechas(f, d.vencimiento);
-      const t = dif < 0 ? `Pagó ${txtDias(-dif)} adelantado` : dif > 0 ? `Pagó ${txtDias(dif)} retrasado` : 'Pagó el día del vencimiento';
-      filas.push(['Puntualidad', `<span style="color:${dif > 0 ? 'var(--red)' : 'var(--green)'}">${t}</span>`]);
+      const t = dif < 0 ? `${txtDias(-dif)} adelantado` : dif > 0 ? `${txtDias(dif)} retrasado` : 'el día del vencimiento';
+      puntualidad = ` · <span style="color:${dif > 0 ? 'var(--red)' : 'var(--green)'}">pagó ${t}</span>`;
     }
   }
+  // Situación arriba y, debajo, la línea de tiempo: registrada ── plazo ── vence
+  const plazoTxt = (regStr && d.vencimiento) ? txtDias(diffDiasFechas(d.vencimiento, regStr)) : '';
+  const icoSit = est === 'pagado' ? 'check' : n === 0 ? 'alerta' : 'reloj';
+  const colVence = est === 'pagado' ? 'var(--text)' : COLOR_URG[urg];
+  const bloqueFechas = `
+    <div class="card" style="margin-bottom:16px;padding:14px 16px">
+      <div class="linea" style="color:${colSit};font-weight:600;font-size:var(--fs-md);margin-bottom:14px;gap:7px">${ico(icoSit, 16)}<span>${situacion}${puntualidad}</span></div>
+      <div class="timeline">
+        <div class="tl-punto"><div class="tl-fecha">${fmtReg(d.creado)}</div><div class="tl-k">Registrada</div></div>
+        <div class="tl-linea"><span>${plazoTxt ? `Plazo ${plazoTxt}` : ''}</span></div>
+        <div class="tl-punto der"><div class="tl-fecha" style="color:${colVence}">${fmtDate(d.vencimiento)}</div><div class="tl-k">Vence</div></div>
+      </div>
+    </div>`;
 
   let html = `
   <div class="detail-header">
@@ -1524,9 +1562,7 @@ function verDeuda(id) {
       <div class="progress-bar" style="height:8px"><div class="progress-fill" style="width:${pct}%"></div></div>
       <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:var(--fs-xs);color:var(--text2)"><span>Pagado: ${fmt(d.pagado)}</span><span>Total: ${fmt(d.monto)}</span></div>
     </div>
-    <div class="card" style="margin-bottom:16px">
-      ${filas.map(([k, v]) => `<div class="stat-row"><span class="stat-row-label">${k}</span><span class="stat-row-value">${v}</span></div>`).join('')}
-    </div>`;
+    ${bloqueFechas}`;
 
   // Cobrar: recordar por WhatsApp y registrar pago
   if(est !== 'pagado') {
