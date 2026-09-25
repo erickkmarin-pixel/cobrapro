@@ -350,7 +350,7 @@ select.form-input { appearance: none; -webkit-appearance: none; background-image
   <!-- ═══════════════════════════════ FORM DEUDA ═══════════════════════════════ -->
   <div class="screen" id="s-form-deuda">
     <div class="topbar">
-      <button class="back-btn" onclick="goTo('deudas')">
+      <button class="back-btn" onclick="volverDeFormDeuda()">
         <svg width="10" height="17" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 10 17"><path d="M9 1 1 8.5 9 16"/></svg>
         Cancelar
       </button>
@@ -378,7 +378,7 @@ select.form-input { appearance: none; -webkit-appearance: none; background-image
   <!-- ═══════════════════════════════ FORM PAGO ═══════════════════════════════ -->
   <div class="screen" id="s-form-pago">
     <div class="topbar">
-      <button class="back-btn" onclick="goTo('pagos')">
+      <button class="back-btn" onclick="volverDeFormPago()">
         <svg width="10" height="17" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 10 17"><path d="M9 1 1 8.5 9 16"/></svg>
         Cancelar
       </button>
@@ -462,7 +462,7 @@ select.form-input { appearance: none; -webkit-appearance: none; background-image
   // Service Worker: solo cachea la app (mismo origen). NO toca las llamadas a Supabase.
   if ('serviceWorker' in navigator) {
     const swCode = `
-      const CACHE = 'cobrapro-v37';
+      const CACHE = 'cobrapro-v38';
       self.addEventListener('install', e => self.skipWaiting());
       self.addEventListener('activate', e => self.clients.claim());
       self.addEventListener('fetch', e => {
@@ -1083,8 +1083,27 @@ function volverDeDeuda() {
   else goTo('deudas');
 }
 
+// Recuerda desde dónde se abrieron los formularios para volver ahí al guardar o cancelar
+function pantallaActiva() { const s = document.querySelector('.screen.active'); return s ? s.id : ''; }
+let deudaActualId = null;
+let origenFormDeuda = { tipo: 'deudas' };
+let origenFormPago  = { tipo: 'pagos' };
+function volverDeFormDeuda() {
+  const o = origenFormDeuda;
+  if(o.tipo === 'deuda' && db.deudas.find(x=>x.id===o.id)) verDeuda(o.id);
+  else if(o.tipo === 'cliente' && db.clientes.find(x=>x.id===o.id)) verCliente(o.id);
+  else if(o.tipo === 'dashboard') goTo('dashboard');
+  else goTo('deudas');
+}
+function volverDeFormPago() {
+  const o = origenFormPago;
+  if(o.tipo === 'deuda' && db.deudas.find(x=>x.id===o.id)) verDeuda(o.id);
+  else goTo('pagos');
+}
+
 function verDeuda(id) {
   const d = db.deudas.find(x=>x.id===id); if(!d) return;
+  deudaActualId = id;
   // Detectar la pantalla desde la que se abrió
   if(document.getElementById('s-cliente-detalle').classList.contains('active') && clienteActualId) {
     origenDeuda = { tipo: 'cliente', id: clienteActualId };
@@ -1252,6 +1271,11 @@ function quitarEvidencia() {
 
 // ─── FORM DEUDA ──────────────────────────────────────────────
 function openFormDeuda(id, preClienteId) {
+  const pa = pantallaActiva();
+  if(pa === 's-deuda-detalle' && id)                     origenFormDeuda = { tipo: 'deuda', id };
+  else if(pa === 's-cliente-detalle' && clienteActualId) origenFormDeuda = { tipo: 'cliente', id: clienteActualId };
+  else if(pa === 's-dashboard')                          origenFormDeuda = { tipo: 'dashboard' };
+  else                                                   origenFormDeuda = { tipo: 'deudas' };
   const sel = document.getElementById('fd-cliente');
   if(!db.clientes.length) { alert('Primero agrega al menos un cliente.'); return; }
   sel.innerHTML = db.clientes.map(c=>`<option value="${c.id}">${c.nombre}</option>`).join('');
@@ -1324,7 +1348,7 @@ async function guardarDeuda() {
     // 3. Borrar la imagen anterior si se reemplazó o quitó
     if(rutaVieja) await borrarEvidencias([rutaVieja]);
     evidNueva = null; evidQuitar = false;
-    await loadData(); showToast('Deuda guardada ✓'); goTo('deudas');
+    await loadData(); showToast('Deuda guardada ✓'); volverDeFormDeuda();
   } catch(e) {
     if(rutaNueva) await borrarEvidencias([rutaNueva]); // no dejar imágenes huérfanas
     alert('Error al guardar: ' + (e.message || e));
@@ -1418,6 +1442,8 @@ function llenarDeudasPago(clienteId, deudaSel) {
 }
 
 function openFormPago(deudaId, pagoId) {
+  origenFormPago = (pantallaActiva() === 's-deuda-detalle' && deudaActualId)
+    ? { tipo: 'deuda', id: deudaActualId } : { tipo: 'pagos' };
   pagoEditando = !!pagoId;
   // Si viene de una deuda o se edita un pago, dejar cliente y deuda ya seleccionados
   let deudaSel = '';
@@ -1479,7 +1505,7 @@ async function guardarPago() {
   }
   await recalcularSaldo(deudaId);
   if(deudaAnterior && deudaAnterior !== deudaId) await recalcularSaldo(deudaAnterior);
-  await loadData(); showToast(editId ? 'Pago actualizado ✓' : 'Pago registrado ✓'); goTo('pagos');
+  await loadData(); showToast(editId ? 'Pago actualizado ✓' : 'Pago registrado ✓'); volverDeFormPago();
 }
 
 // Borrar el pago que se está editando (desde el formulario)
@@ -1518,12 +1544,8 @@ function confirmarEliminar(tipo, id, msg, extra) {
     if(res.error) { alert('Error al eliminar: ' + res.error.message); return; }
     await loadData(); closeModal();
     if(tipo === 'cliente') { showToast('Cliente eliminado'); goTo('clientes'); }
-    else if(tipo === 'deuda') { showToast('Deuda eliminada'); goTo('deudas'); }
-    else { // pago
-      showToast('Pago eliminado');
-      if(document.getElementById('s-deuda-detalle').classList.contains('active')) verDeuda(extra);
-      else goTo('pagos');
-    }
+    else if(tipo === 'deuda') { showToast('Deuda eliminada'); volverDeDeuda(); }
+    else { showToast('Pago eliminado'); volverDeFormPago(); }
   };
   document.getElementById('modal-confirm-btn').onclick = modalAction;
   document.getElementById('modal-eliminar').classList.add('open');
